@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
+from process_mining_api.test import test
 
 # FastAPI App initialisieren
 app = FastAPI()
@@ -13,7 +14,7 @@ class Item(BaseModel):
 # Einfacher GET Endpoint
 @app.get("/")
 def root():
-    return {"message": "Hello FastAPI"}
+    return {"message": "Hello FastAPI", "test": test()}
 
 # GET mit Path-Parameter
 @app.get("/items/{item_id}")
