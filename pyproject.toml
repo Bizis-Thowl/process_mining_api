@@ -10,7 +10,10 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "uvicorn>=0.47.0",
-    "fastapi>=0.136.1"
+    "fastapi>=0.136.1",
+    "python-multipart>=0.0.29",
+    "pm4py>=2.7.22.3",
+    "pandas>=3.0.3",
 ]
 
 [tool.setuptools]

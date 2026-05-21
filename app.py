@@ -1,6 +1,7 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, File, UploadFile
 from pydantic import BaseModel
 from process_mining_api.test import test
+from process_mining_api.process_mining_test import simple_bpmn
 
 # FastAPI App initialisieren
 app = FastAPI()
@@ -28,3 +29,8 @@ def create_item(item: Item):
         "message": "Item received",
         "data": item
     }
+
+@app.post("/upload_csv/")
+async def upload_csv_file(file: UploadFile = File(...)):
+    contents = await file.read()
+    return simple_bpmn(contents, file.filename)
