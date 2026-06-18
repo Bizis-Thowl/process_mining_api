@@ -14,13 +14,17 @@ dependencies = [
     "python-multipart>=0.0.29",
     "pm4py>=2.7.22.3",
     "pandas>=3.0.3",
+    "langchain-text-splitters",
+    "langchain-qdrant",
+    "langchain-ollama",
+    "dotenv>=0.9.9",
 ]
 
 [tool.setuptools]
 package-dir = {"" = "src"}
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/process_mining_api"]
+packages = ["src/process_mining_api", "src/json_retrieval"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
