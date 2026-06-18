@@ -1,3 +1,15 @@
+import datetime
 
-def answer_query(query: str):
-    pass
+from json_retrieval.json_retrieval import RetrievalController
+
+
+class QueryHandler():
+    def __init__(self, collection_name = None):
+        if collection_name is None:
+            collection_name = "default_collection"
+        self.__retriever_controller = RetrievalController(collection_name)
+
+    def simple_query(self, query: str, ):
+        response = self.__retriever_controller.simple_query(query)
+        df_labels = self.__retriever_controller.get_labels(response)
+        return df_labels

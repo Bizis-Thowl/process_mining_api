@@ -220,3 +220,5 @@ __marimo__/
 .streamlit/secrets.toml
 
 uv.lock
+
+src/json_retrieval/local_data
