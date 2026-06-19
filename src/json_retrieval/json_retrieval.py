@@ -18,7 +18,7 @@ class JSONRetriever():
     """
     Future work will happen in process_mining_api!
     """
-    def __init__(self, collection_name ="json_embedding"):
+    def __init__(self, collection_name ="json_embedding", qdrant_url :str = None):
         
         self.collection_name = collection_name
         #self.tracer = init_phoenix("json_retriever")
@@ -28,8 +28,10 @@ class JSONRetriever():
             model=os.getenv("EMB_MODEL"),
             validate_model_on_init=True,
             base_url=os.getenv("EMB_BASE_URL"))
-        
-        self.client = QdrantClient(path=os.getenv("PROJECT_DIR")+"/json_retrieval/local_data/embeddings")
+        if qdrant_url is not None:
+            self.client = QdrantClient(url = qdrant_url)
+        else:
+            self.client = QdrantClient(path=os.getenv("PROJECT_DIR")+"/json_retrieval/local_data/embeddings")
         self.create_collection(self.collection_name)
         
         self.vector_store = QdrantVectorStore(
@@ -73,11 +75,11 @@ class JSONEmbedder():
 
     def create_json_embedding(self,json_data):
         uuids = [str(uuid4()) for _ in range(len(json_data))]
-        str_chunks = {}
-        self.chunks = {}
+        str_chunks = []
+        #self.chunks = {}
         for i, chunk in enumerate(json_data):
-            str_chunks[uuids[i]]= str(chunk)
-            self.chunks[uuids[i]] = chunk
+            str_chunks.append(str(chunk))
+            #self.chunks[uuids[i]] = chunk
         self.vector_store.add_texts(
             texts=str_chunks,
             ids=uuids)
@@ -100,13 +102,13 @@ class JSONChunker:
 
 class RetrievalController:
 
-    def __init__(self, collection_name):
+    def __init__(self, collection_name, qdrant_url:str = None):
         load_dotenv()
-        self.json_retriever = JSONRetriever(collection_name)
+        self.json_retriever = JSONRetriever(collection_name, qdrant_url)
         
 
     def load_data(self, filename):
-        with open(f"src\json_retriever\local_data\{filename}", "r", encoding="utf-8") as f:
+        with open( f"src/json_retrieval/local_data/{filename}", "r", encoding="utf-8") as f:
             json_data = json.load(f)
         return json_data
 
@@ -116,7 +118,7 @@ class RetrievalController:
     def get_id_label(self, chunk, metadata):
         # Recieves a String of a chunk and its metadata and returns the a label and id
         label_pattern = re.compile(r"'label': \{'de':\s*'(.*?)'",  flags=re.MULTILINE) #TODO: add {'tooltiplabelid': ??
-        id_pattern = re.compile(r"'_id': '(.*?)'")
+        #id_pattern = re.compile(r"'_id': '(.*?)'")
         label = re.findall(label_pattern,chunk)[0]
         id = metadata["_id"]
         return label, id
@@ -134,6 +136,16 @@ class RetrievalController:
 
     def simple_query(self, query):
         return self.json_retriever.retrieve(query,25)
+    
+    def simple_query_json(self, query)-> dict: 
+        response_list = self.simple_query(query)
+        json_list = []
+        for i, doc in enumerate(response_list):
+            content = doc[0].page_content.replace("\'","\"")
+            json_list.append({"page_content": content, "metadata": doc[0].metadata})
+        #raw_str = raw_str.replace("\'","\"")
+        #json_obj = json.loads(raw_str)
+        return json_list
 
 
 if __name__ == "__main__":
@@ -143,15 +155,24 @@ if __name__ == "__main__":
 
     collection_name = "json_collection_2"
 
-    controller = RetrievalController(collection_name)
+    qdrant_url = "http://localhost:6333/"
 
-    json_data = controller.load_data("Datenmodell-2026-06-10_18-13-17-Entwicklung.json")
+    controller = RetrievalController(collection_name, qdrant_url)
+
+    #json_data = controller.load_data("Datenmodell-2026-06-10_18-13-17-Entwicklung.json")
     
-    controller.re_chunk_json(json_data)
+    #controller.re_chunk_json(json_data)
 
-    #json_retriever.embed_json(json_data)
+    #controller.json_retriever.embed_json(json_data)
 
-    
+    query = "Wie funktioniert ein Dateiupload?"
+    query = "Wei kann ich ein Objekt erstellen?"
+    #response = controller.simple_query(query)
+    #print("Response: ", response)
+    json_response = controller.simple_query_json(query)
+    print(json_response)
+
+    """
     df_chunks = pd.DataFrame(response,columns=["output","value"])
     print(df_chunks)
     df_chunks.loc[0]["output"]
@@ -163,7 +184,7 @@ if __name__ == "__main__":
     print(label, id)
     print(controller.get_labels(response))
     print(df_chunks.loc[5]["output"])
-    #json_retriever.retrieve_chunk(id)
+    #json_retriever.retrieve_chunk(id)"""
     controller.json_retriever.client.close()
 
 
