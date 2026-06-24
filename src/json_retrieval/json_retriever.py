@@ -15,9 +15,10 @@ from qdrant_client.http.models import Distance, VectorParams
 from langchain_ollama import OllamaEmbeddings
 
 
-from process_mining_api import init_phoenix
+from process_mining_api.init_phoenix import init_phoenix
 from process_mining_api.responsemodels.basic_response import BasicResponse
-from json_retrieval.prompts import SELECTION_PROMPT, SELECTION_SYSTEM_PROMPT
+from json_retrieval.prompts.prompts import SELECTION_PROMPT, SELECTION_SYSTEM_PROMPT
+
 
 class JSONRetriever():
     """
@@ -110,8 +111,7 @@ class RetrievalController:
     def __init__(self, collection_name, qdrant_url:str = None):
         load_dotenv()
         self.json_retriever = JSONRetriever(collection_name, qdrant_url)
-        init_phoenix()
-        self.tracer = init_phoenix("doc-retrieval")
+        self.tracer = init_phoenix("json_doc-retrieval")
         self.client = self.init_client()
 
     def init_client(self):
@@ -168,6 +168,7 @@ class RetrievalController:
     def simple_llm_response(self, query :str, response_model = BasicResponse):
         MODEL = os.getenv("MODEL")
         json_response = self.simple_query_json(query)
+        print(json_response)
         prompt = self.create_prompt(json_response, query)
         with self.tracer.start_as_current_span("Process", openinference_span_kind="agent") as span:
             span.set_input(prompt)
@@ -223,6 +224,9 @@ if __name__ == "__main__":
     print(controller.get_labels(response))
     print(df_chunks.loc[5]["output"])
     #json_retriever.retrieve_chunk(id)"""
+
+    query_response = controller.simple_llm_response(query)
+    print(query_response)
     controller.json_retriever.qdr_client.close()
 
 

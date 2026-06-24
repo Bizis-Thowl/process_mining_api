@@ -1,13 +1,14 @@
 import datetime
+import os
 
-from json_retrieval.json_retrieval import RetrievalController
+from json_retrieval.json_retriever import RetrievalController
 
 
 class QueryHandler():
-    def __init__(self, collection_name = None):
+    def __init__(self, collection_name = None, qdrant_url ="http://localhost:6333/"):
         if collection_name is None:
-            collection_name = "default_collection"
-        self.__retriever_controller = RetrievalController(collection_name)
+            collection_name = os.getenv("COLLECTION_NAME")
+        self.__retriever_controller = RetrievalController(collection_name,qdrant_url)
 
 
     def simple_query(self, query: str, ):

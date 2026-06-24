@@ -2,7 +2,6 @@ from fastapi import FastAPI, File, UploadFile
 from pydantic import BaseModel
 from process_mining_api.test import test
 from process_mining_api.process_mining_test import simple_bpmn
-from process_mining_api.responsemodels.basic_response import Query
 from process_mining_api.llm_response import QueryHandler
 
 # FastAPI App initialisieren
