@@ -222,3 +222,4 @@ __marimo__/
 uv.lock
 
 src/json_retrieval/local_data
+.vscode/
