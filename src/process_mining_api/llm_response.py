@@ -9,7 +9,12 @@ class QueryHandler():
             collection_name = "default_collection"
         self.__retriever_controller = RetrievalController(collection_name)
 
+
     def simple_query(self, query: str, ):
-        response = self.__retriever_controller.simple_query(query)
-        df_labels = self.__retriever_controller.get_labels(response)
-        return df_labels
+        response = self.__retriever_controller.simple_query_json(query)
+        #df_labels = self.__retriever_controller.get_labels(response)
+        return response
+    
+    def simple_question(self, query: str):
+        response = self.__retriever_controller.simple_llm_response(query)
+        return response

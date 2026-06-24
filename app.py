@@ -2,7 +2,7 @@ from fastapi import FastAPI, File, UploadFile
 from pydantic import BaseModel
 from process_mining_api.test import test
 from process_mining_api.process_mining_test import simple_bpmn
-from process_mining_api.responsemodels.query import Query
+from process_mining_api.responsemodels.basic_response import Query
 from process_mining_api.llm_response import QueryHandler
 
 # FastAPI App initialisieren
@@ -41,4 +41,9 @@ async def upload_csv_file(file: UploadFile = File(...)):
 @app.get("/query")
 def get_query(query: str):
     response = query_handler.simple_query(query)
+    return {"query": query, "response": response}
+
+@app.get("/question")
+def get_answer(query: str):
+    response = query_handler.simple_question(query)
     return {"query": query, "response": response}

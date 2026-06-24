@@ -1,18 +1,23 @@
 import os
 from dotenv import load_dotenv
-#import instructor
 import json
 import pandas as pd
 import re
+import instructor
 
+from opentelemetry.trace import StatusCode
+from openai import OpenAI
 from uuid import uuid4
-#from retriever import doc_retriever, doc_chunker, doc_embedder
-#from retriever.init_phoenix import init_phoenix
 from langchain_text_splitters import RecursiveJsonSplitter
 from langchain_qdrant import QdrantVectorStore
 from qdrant_client import QdrantClient
 from qdrant_client.http.models import Distance, VectorParams
 from langchain_ollama import OllamaEmbeddings
+
+
+from process_mining_api import init_phoenix
+from process_mining_api.responsemodels.basic_response import BasicResponse
+from json_retrieval.prompts import SELECTION_PROMPT, SELECTION_SYSTEM_PROMPT
 
 class JSONRetriever():
     """
@@ -29,18 +34,18 @@ class JSONRetriever():
             validate_model_on_init=True,
             base_url=os.getenv("EMB_BASE_URL"))
         if qdrant_url is not None:
-            self.client = QdrantClient(url = qdrant_url)
+            self.qdr_client = QdrantClient(url = qdrant_url)
         else:
-            self.client = QdrantClient(path=os.getenv("PROJECT_DIR")+"/json_retrieval/local_data/embeddings")
+            self.qdr_client = QdrantClient(path=os.getenv("PROJECT_DIR")+"/json_retrieval/local_data/embeddings")
         self.create_collection(self.collection_name)
         
         self.vector_store = QdrantVectorStore(
-            client=self.client,
+            client=self.qdr_client,
             collection_name=self.collection_name,
             embedding=self.embeddings
         )
         
-        self.embedder = JSONEmbedder(self.embeddings,self.client,self.vector_store)
+        self.embedder = JSONEmbedder(self.embeddings,self.qdr_client,self.vector_store)
     
     def retrieve(self, query, num_results=4):
         #query_emb = self.embedder.get_embedding(query,os.getenv("EMB_MODEL"))
@@ -57,8 +62,8 @@ class JSONRetriever():
 
     def create_collection(self, name:str):
         #Create new collection with the given name if it does not exist
-        if not self.client.collection_exists(name):
-            self.client.create_collection(
+        if not self.qdr_client.collection_exists(name):
+            self.qdr_client.create_collection(
                 collection_name=name,
                 vectors_config=VectorParams(size=4096, distance=Distance.COSINE),
             )
@@ -105,7 +110,15 @@ class RetrievalController:
     def __init__(self, collection_name, qdrant_url:str = None):
         load_dotenv()
         self.json_retriever = JSONRetriever(collection_name, qdrant_url)
-        
+        init_phoenix()
+        self.tracer = init_phoenix("doc-retrieval")
+        self.client = self.init_client()
+
+    def init_client(self):
+        # Initialize OpenAI client
+        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"), base_url=os.getenv("BASE_URL"))
+        client = instructor.from_openai(client, mode=instructor.Mode.JSON)
+        return client
 
     def load_data(self, filename):
         with open( f"src/json_retrieval/local_data/{filename}", "r", encoding="utf-8") as f:
@@ -137,7 +150,7 @@ class RetrievalController:
     def simple_query(self, query):
         return self.json_retriever.retrieve(query,25)
     
-    def simple_query_json(self, query)-> dict: 
+    def simple_query_json(self, query: str)-> dict: 
         response_list = self.simple_query(query)
         json_list = []
         for i, doc in enumerate(response_list):
@@ -146,6 +159,31 @@ class RetrievalController:
         #raw_str = raw_str.replace("\'","\"")
         #json_obj = json.loads(raw_str)
         return json_list
+    
+
+    def create_prompt(self, search_result: str, query_str: str):
+        prompt = SELECTION_PROMPT.format(json_response=search_result, user_query=query_str)    
+        return prompt
+    
+    def simple_llm_response(self, query :str, response_model = BasicResponse):
+        MODEL = os.getenv("MODEL")
+        json_response = self.simple_query_json(query)
+        prompt = self.create_prompt(json_response, query)
+        with self.tracer.start_as_current_span("Process", openinference_span_kind="agent") as span:
+            span.set_input(prompt)
+            
+            response = self.client.chat.completions.create(
+                model=MODEL,
+                messages=[
+                    {"role": "system", "content": SELECTION_SYSTEM_PROMPT},
+                    {"role": "user", "content": prompt}
+                ],
+                response_model=response_model
+            )
+            span.set_output(response.model_dump())
+            span.set_status(StatusCode.OK)
+        return response
+        
 
 
 if __name__ == "__main__":
@@ -185,7 +223,7 @@ if __name__ == "__main__":
     print(controller.get_labels(response))
     print(df_chunks.loc[5]["output"])
     #json_retriever.retrieve_chunk(id)"""
-    controller.json_retriever.client.close()
+    controller.json_retriever.qdr_client.close()
 
 
 
