@@ -223,3 +223,4 @@ uv.lock
 
 src/json_retrieval/local_data
 .vscode/
+database.py
