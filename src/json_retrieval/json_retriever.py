@@ -13,7 +13,7 @@ from langchain_qdrant import QdrantVectorStore
 from qdrant_client import QdrantClient
 from qdrant_client.http.models import Distance, VectorParams
 from langchain_ollama import OllamaEmbeddings
-
+from langchain_openai import OpenAIEmbeddings
 
 from process_mining_api.init_phoenix import init_phoenix
 from process_mining_api.responsemodels.basic_response import BasicResponse
@@ -30,10 +30,15 @@ class JSONRetriever():
         #self.tracer = init_phoenix("json_retriever")
         self.chunker = JSONChunker()
         
-        self.embeddings = OllamaEmbeddings(
+        self.embeddings = OpenAIEmbeddings(
             model=os.getenv("EMB_MODEL"),
-            validate_model_on_init=True,
-            base_url=os.getenv("EMB_BASE_URL"))
+            base_url=os.getenv("EMB_BASE_URL")
+        )
+
+        #self.embeddings = OllamaEmbeddings(
+        #    model=os.getenv("EMB_MODEL"),
+        #    validate_model_on_init=True,
+        #    base_url=os.getenv("EMB_BASE_URL"),)
         if qdrant_url is not None:
             self.qdr_client = QdrantClient(url = qdrant_url)
         else:

@@ -2,6 +2,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
 import jwt
+import os
 from fastapi import Depends, FastAPI, HTTPException, status
 #from fastapi import File, UploadFile
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -20,9 +21,10 @@ from database import fake_users_db
 app = FastAPI()
 query_handler = QueryHandler()
 
-# SECRET_KEY =
-#ALGORITHM = 
-#ACCESS_TOKEN_EXPIRE_MINUTES = 30
+SECRET_KEY = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"
+#os.getenv("SECRET_KEY")
+ALGORITHM = os.getenv("ALGORITHM")
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 
 
@@ -160,12 +162,12 @@ def root():
 
 # GET mit Path-Parameter
 @app.get("/items/{item_id}")
-def get_item(item_id: int):
+def get_item(item_id: int, current_user: Annotated[User, Depends(get_current_active_user)]):
     return {"item_id": item_id}
 
 # POST Endpoint mit JSON Body
 @app.post("/items")
-def create_item(item: Item):
+def create_item(item: Item, current_user: Annotated[User, Depends(get_current_active_user)]):
     return {
         "message": "Item received",
         "data": item
@@ -177,11 +179,11 @@ def create_item(item: Item):
 #    return simple_bpmn(contents, file.filename)
 
 @app.get("/query")
-def get_query(query: str):
+async def get_query(query: str, current_user: Annotated[User, Depends(get_current_active_user)]):
     response = query_handler.simple_query(query)
     return {"query": query, "response": response}
 
 @app.get("/question")
-def get_answer(query: str):
+def get_answer(query: str, current_user: Annotated[User, Depends(get_current_active_user)]):
     response = query_handler.simple_question(query)
     return {"query": query, "response": response}
