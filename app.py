@@ -3,6 +3,7 @@ from typing import Annotated
 
 import jwt
 import os
+import json
 from fastapi import Depends, FastAPI, HTTPException, status
 #from fastapi import File, UploadFile
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -15,18 +16,18 @@ from process_mining_api.test import test
 from process_mining_api.process_mining_test import simple_bpmn
 from process_mining_api.llm_response import QueryHandler
 
-from database import fake_users_db
+#from database import fake_users_db
 
 # FastAPI App initialisieren
 app = FastAPI()
 query_handler = QueryHandler()
 
-SECRET_KEY = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"
-#os.getenv("SECRET_KEY")
+SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM")
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
-
+with open("database.json", "r") as f:
+    user_db = json.load(f)
 
 # Security
 
@@ -102,7 +103,7 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
         token_data = TokenData(username=username)
     except InvalidTokenError:
         raise credentials_exception
-    user = get_user(fake_users_db, username=token_data.username)
+    user = get_user(user_db, username=token_data.username)
     if user is None:
         raise credentials_exception
     return user
@@ -120,7 +121,7 @@ async def get_current_active_user(
 async def login_for_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
 ) -> Token:
-    user = authenticate_user(fake_users_db, form_data.username, form_data.password)
+    user = authenticate_user(user_db, form_data.username, form_data.password)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -185,5 +186,10 @@ async def get_query(query: str, current_user: Annotated[User, Depends(get_curren
 
 @app.get("/question")
 def get_answer(query: str, current_user: Annotated[User, Depends(get_current_active_user)]):
-    response = query_handler.simple_question(query)
+    response = query_handler.simple_question(query, tracing_id=tracing_id)
     return {"query": query, "response": response}
+
+@app.get("/change_tracing_id")
+def change_tracing_id(tracing_id: str, current_user: Annotated[User, Depends(get_current_active_user)]):
+    query_handler.set_tracing_id(tracing_id)
+    return {"message": f"Tracing ID changed to {tracing_id}"}

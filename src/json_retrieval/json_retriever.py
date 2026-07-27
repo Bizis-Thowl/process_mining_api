@@ -24,30 +24,31 @@ class JSONRetriever():
     """
     Future work will happen in process_mining_api!
     """
-    def __init__(self, collection_name ="json_embedding", qdrant_url :str = None):
+    def __init__(self, vector_store_name ="json_embedding", qdrant_url :str = None):
         
-        self.collection_name = collection_name
+        self.vector_store_name = vector_store_name
         #self.tracer = init_phoenix("json_retriever")
         self.chunker = JSONChunker()
         
-        self.embeddings = OpenAIEmbeddings(
-            model=os.getenv("EMB_MODEL"),
-            base_url=os.getenv("EMB_BASE_URL")
-        )
-
-        #self.embeddings = OllamaEmbeddings(
+        #self.embeddings = OpenAIEmbeddings(
         #    model=os.getenv("EMB_MODEL"),
-        #    validate_model_on_init=True,
-        #    base_url=os.getenv("EMB_BASE_URL"),)
+        #    base_url=os.getenv("EMB_BASE_URL")
+        #)
+
+        self.embeddings = OllamaEmbeddings(
+            model=os.getenv("EMB_MODEL"),
+            validate_model_on_init=True,
+            base_url=os.getenv("EMB_BASE_URL"),)
+        
         if qdrant_url is not None:
             self.qdr_client = QdrantClient(url = qdrant_url)
         else:
             self.qdr_client = QdrantClient(path=os.getenv("PROJECT_DIR")+"/json_retrieval/local_data/embeddings")
-        self.create_collection(self.collection_name)
+        self.create_collection(self.vector_store_name)
         
         self.vector_store = QdrantVectorStore(
             client=self.qdr_client,
-            collection_name=self.collection_name,
+            collection_name=self.vector_store_name,
             embedding=self.embeddings
         )
         
@@ -63,7 +64,7 @@ class JSONRetriever():
     
     def embed_json(self,json_data):
         chunks = self.chunker.chunk_json(json_data)
-        self.create_collection(self.collection_name)
+        self.create_collection(self.vector_store_name)
         embedding = self.embedder.create_json_embedding(chunks)
 
     def create_collection(self, name:str):
@@ -113,9 +114,9 @@ class JSONChunker:
 
 class RetrievalController:
 
-    def __init__(self, collection_name, qdrant_url:str = None):
+    def __init__(self, vector_store_name, qdrant_url:str = None):
         load_dotenv()
-        self.json_retriever = JSONRetriever(collection_name, qdrant_url)
+        self.json_retriever = JSONRetriever(vector_store_name, qdrant_url)
         self.tracer = init_phoenix("json_doc-retrieval")
         self.client = self.init_client()
 
@@ -124,6 +125,10 @@ class RetrievalController:
         client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"), base_url=os.getenv("BASE_URL"))
         client = instructor.from_openai(client, mode=instructor.Mode.JSON)
         return client
+
+    def set_tracing_id(self, tracing_id: str):
+        self.tracer = init_phoenix(tracing_id)
+        
 
     def load_data(self, filename):
         with open( f"src/json_retrieval/local_data/{filename}", "r", encoding="utf-8") as f:
@@ -175,7 +180,7 @@ class RetrievalController:
         json_response = self.simple_query_json(query)
         print(json_response)
         prompt = self.create_prompt(json_response, query)
-        with self.tracer.start_as_current_span("Process", openinference_span_kind="agent") as span:
+        with self.tracer.start_as_current_span("LLM_Response", openinference_span_kind="agent") as span:
             span.set_input(prompt)
             
             response = self.client.chat.completions.create(
