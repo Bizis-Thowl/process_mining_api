@@ -186,7 +186,7 @@ async def get_query(query: str, current_user: Annotated[User, Depends(get_curren
 
 @app.get("/question")
 def get_answer(query: str, current_user: Annotated[User, Depends(get_current_active_user)]):
-    response = query_handler.simple_question(query, tracing_id=tracing_id)
+    response = query_handler.simple_question(query)
     return {"query": query, "response": response}
 
 @app.get("/change_tracing_id")
