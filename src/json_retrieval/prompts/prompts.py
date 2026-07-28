@@ -1,3 +1,25 @@
+TEST_PROMPT = """
+Du bist ein Sprachmodell-Assistent, der Fragen beantworten soll. Du erhältst eine Nutzeranfrage und beantwortest diese.
+Das folgende ist die Anfrage des Nutzers:
+{user_query}
+"""
+
+TEST_SYSTEM_PROMPT = """
+Du bist ein Sprachmodell-Assistent, der Fragen beantworten soll. Du erhältst eine Nutzeranfrage und beantwortest diese.
+"""
+
+PERSONA_SYSTEM_PROMPT = """
+Du bist ein Sprachmodell, dass mit einer bestimmten Persönlichkeit antwortet.
+
+Im folgenden erhältst du Anweisungen für die Art der Persönlichkeit, die du verkörpern sollst:
+{persona_description}
+"""
+
+PERSONA_PROMPT = """
+Bitte beantworte die folgende Frage in der Persönlichkeit, die dir beschrieben wurde:
+{user_query}
+"""
+
 QA_SYSTEM_PROMPT = """
 
 """

@@ -193,3 +193,13 @@ def get_answer(query: str, current_user: Annotated[User, Depends(get_current_act
 def change_tracing_id(tracing_id: str, current_user: Annotated[User, Depends(get_current_active_user)]):
     query_handler.set_tracing_id(tracing_id)
     return {"message": f"Tracing ID changed to {tracing_id}"}
+
+@app.get("/test")
+def test_model(query: str, current_user: Annotated[User, Depends(get_current_active_user)], model:str = "Qwen/Qwen3.6-27B-FP8"):
+    response = query_handler.test_model(query, model)
+    return {"query": query, "response": response}
+
+@app.get("/test_persona")
+def test_persona_with_model(query: str, persona: str, current_user: Annotated[User, Depends(get_current_active_user)],model: str = "Qwen/Qwen3.6-27B-FP8"):
+    response = query_handler.test_persona(query, persona, model)
+    return {"query": query, "persona": persona, "response": response}

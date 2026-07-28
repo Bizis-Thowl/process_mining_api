@@ -12,6 +12,7 @@ def init_phoenix(project_name: str = "tracing-agent"):
 
     tracer_provider = register(
         project_name=PROJECT_NAME,
+        batch = True,
         endpoint= PHOENIX_ENDPOINT + "v1/traces",
     )
     

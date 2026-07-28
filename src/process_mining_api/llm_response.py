@@ -23,3 +23,11 @@ class QueryHandler():
 
     def set_tracing_id(self, tracing_id: str):
         self.__retriever_controller.set_tracing_id(tracing_id)
+
+    def test_model(self, query: str, model: str):
+        response = self.__retriever_controller.test_query(query, model)
+        return response
+
+    def test_persona(self, query: str, persona: str, model: str):
+        response = self.__retriever_controller.test_query(query, persona, model)
+        return response

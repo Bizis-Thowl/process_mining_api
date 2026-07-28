@@ -17,7 +17,7 @@ from langchain_openai import OpenAIEmbeddings
 
 from process_mining_api.init_phoenix import init_phoenix
 from process_mining_api.responsemodels.basic_response import BasicResponse
-from json_retrieval.prompts.prompts import SELECTION_PROMPT, SELECTION_SYSTEM_PROMPT
+from json_retrieval.prompts.prompts import SELECTION_PROMPT, SELECTION_SYSTEM_PROMPT, TEST_PROMPT, TEST_SYSTEM_PROMPT, PERSONA_PROMPT, PERSONA_SYSTEM_PROMPT
 
 
 class JSONRetriever():
@@ -123,7 +123,7 @@ class RetrievalController:
     def init_client(self):
         # Initialize OpenAI client
         client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"), base_url=os.getenv("BASE_URL"))
-        client = instructor.from_openai(client, mode=instructor.Mode.JSON)
+        client = instructor.from_openai(client, mode=instructor.Mode.JSON, )
         return client
 
     def set_tracing_id(self, tracing_id: str):
@@ -194,19 +194,59 @@ class RetrievalController:
             span.set_output(response.model_dump())
             span.set_status(StatusCode.OK)
         return response
-        
 
+    def test_query(self, query: str, model: str, persona: str = None):
+        if persona is None:
+            prompt = TEST_PROMPT.format(user_query=query)
+            system_prompt = TEST_SYSTEM_PROMPT
+        else:
+            prompt = PERSONA_PROMPT.format(user_query=query)
+            system_prompt = PERSONA_SYSTEM_PROMPT.format(persona=persona)
+        
+        with self.tracer.start_as_current_span("Test_Response", openinference_span_kind="agent") as span:
+            span.set_input(prompt)
+                        
+            response = self.client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": prompt}
+                ],
+                response_model=BasicResponse
+            )
+            span.set_output(response.model_dump())
+            span.set_status(StatusCode.OK)
+        return response
+        
+def embedding_creation():
+    vector_store_name = os.getenv("VECTOR_STORE_NAME")
+
+    qdrant_url = "http://localhost:6333/"
+    
+    controller = RetrievalController(vector_store_name, qdrant_url)
+
+    json_data = controller.load_data("Datenmodell-2026-06-10_18-13-17-Entwicklung.json")
+        
+    controller.re_chunk_json(json_data)
+    
+    controller.json_retriever.embed_json(json_data)
+
+    query = "Wie kann ich ein Objekt erstellen?"
+
+    json_response = controller.simple_query_json(query)
+    print(json_response)
+
+    query_response = controller.simple_llm_response(query)
+    print(query_response)
+    controller.json_retriever.qdr_client.close()
 
 if __name__ == "__main__":
    
-    
+
+    embedding_creation()
     #json_embedder = JSONEmbedder()
 
-    collection_name = "json_collection_2"
-
-    qdrant_url = "http://localhost:6333/"
-
-    controller = RetrievalController(collection_name, qdrant_url)
+    
 
     #json_data = controller.load_data("Datenmodell-2026-06-10_18-13-17-Entwicklung.json")
     
@@ -214,12 +254,11 @@ if __name__ == "__main__":
 
     #controller.json_retriever.embed_json(json_data)
 
-    query = "Wie funktioniert ein Dateiupload?"
-    query = "Wei kann ich ein Objekt erstellen?"
+    #query = "Wie funktioniert ein Dateiupload?"
+    #query = "Wei kann ich ein Objekt erstellen?"
     #response = controller.simple_query(query)
     #print("Response: ", response)
-    json_response = controller.simple_query_json(query)
-    print(json_response)
+    
 
     """
     df_chunks = pd.DataFrame(response,columns=["output","value"])
@@ -235,9 +274,7 @@ if __name__ == "__main__":
     print(df_chunks.loc[5]["output"])
     #json_retriever.retrieve_chunk(id)"""
 
-    query_response = controller.simple_llm_response(query)
-    print(query_response)
-    controller.json_retriever.qdr_client.close()
+    
 
 
 
