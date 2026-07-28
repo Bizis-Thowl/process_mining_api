@@ -11,6 +11,7 @@ from jwt.exceptions import InvalidTokenError
 from pwdlib import PasswordHash
 from pydantic import BaseModel
 
+from user_management import UserManager
 
 from process_mining_api.test import test
 from process_mining_api.process_mining_test import simple_bpmn
@@ -26,8 +27,9 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM")
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
-with open("database.json", "r") as f:
-    user_db = json.load(f)
+
+user_manager = UserManager()
+user_db = user_manager.get_user_db()
 
 # Security
 
@@ -147,6 +149,19 @@ async def read_own_items(
     current_user: Annotated[User, Depends(get_current_active_user)],
 ):
     return [{"item_id": "Foo", "owner": current_user.username}]
+
+@app.get("/users/me/change_password/")
+async def change_password(
+    current_user: Annotated[User, Depends(get_current_active_user)], old_password: str, new_password: str, new_password_repeat: str):
+    authenticate_user(user_db, current_user["username"], old_password)
+    new_hash = get_password_hash(new_password)
+    new_hash_rep = get_password_hash(new_password_repeat)
+    if new_hash != new_hash_rep:
+        raise HTTPException(status_code=400, detail="New passwords do not match")
+    else:
+        user_db[current_user["username"]]["hashed_password"] = new_hash
+        user_manager.update_user_db(user_db)
+        
 
 # Logic for answering queries
 
