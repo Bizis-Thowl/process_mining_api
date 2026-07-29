@@ -3,7 +3,7 @@ from typing import Annotated
 
 import jwt
 import os
-import json
+#import json
 from fastapi import Depends, FastAPI, HTTPException, status
 #from fastapi import File, UploadFile
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -11,7 +11,7 @@ from jwt.exceptions import InvalidTokenError
 from pwdlib import PasswordHash
 from pydantic import BaseModel
 
-from user_management import UserManager
+from user_management import UserManager, NewPasswordForm
 
 from process_mining_api.test import test
 from process_mining_api.process_mining_test import simple_bpmn
@@ -150,7 +150,28 @@ async def read_own_items(
 ):
     return [{"item_id": "Foo", "owner": current_user.username}]
 
-@app.get("/users/me/change_password/")
+@app.post("/users/me/change_password/")
+async def change_password(
+    form_data: Annotated[NewPasswordForm, Depends()] 
+):
+    user = authenticate_user(user_db, form_data.username, form_data.password)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    if form_data.new_password != form_data.new_password_repeat:
+        raise HTTPException(status_code=400, detail="New passwords do not match")
+    else:
+        new_hash = get_password_hash(form_data.new_password)
+        new_hash_rep = get_password_hash(form_data.new_password_repeat)
+        user_db[form_data.username]["hashed_password"] = new_hash
+        user_manager.update_user_db(user_db)
+      
+
+"""
 async def change_password(
     current_user: Annotated[User, Depends(get_current_active_user)], old_password: str, new_password: str, new_password_repeat: str):
     authenticate_user(user_db, current_user["username"], old_password)
@@ -160,7 +181,7 @@ async def change_password(
         raise HTTPException(status_code=400, detail="New passwords do not match")
     else:
         user_db[current_user["username"]]["hashed_password"] = new_hash
-        user_manager.update_user_db(user_db)
+        user_manager.update_user_db(user_db)"""
         
 
 # Logic for answering queries
