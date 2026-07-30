@@ -11,6 +11,8 @@ from jwt.exceptions import InvalidTokenError
 from pwdlib import PasswordHash
 from pydantic import BaseModel
 
+from fastapi.openapi.utils import get_openapi
+
 from user_management import UserManager, NewPasswordForm
 
 from process_mining_api.test import test
@@ -21,7 +23,25 @@ from process_mining_api.llm_response import QueryHandler
 
 # FastAPI App initialisieren
 app = FastAPI()
+
 query_handler = QueryHandler()
+
+# Configuration
+
+def custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+    openapi_schema = get_openapi(
+        title="KI-InnOMATiV LLM API",
+        version="0.1.0",
+        summary="An API for the **KI-InnOMATiV** project",
+        description="This API is part of the **KI-InnOMATiV** project and offers several functionalities for LLM usage.",
+        routes=app.routes,
+    )
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+app.openapi = custom_openapi
 
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM")
