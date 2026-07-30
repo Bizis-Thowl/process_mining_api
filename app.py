@@ -3,10 +3,12 @@ from typing import Annotated
 
 import jwt
 import os
-#import json
+
 from fastapi import Depends, FastAPI, HTTPException, status
 #from fastapi import File, UploadFile
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.responses import RedirectResponse
+
 from jwt.exceptions import InvalidTokenError
 from pwdlib import PasswordHash
 from pydantic import BaseModel
@@ -34,7 +36,7 @@ def custom_openapi():
     openapi_schema = get_openapi(
         title="KI-InnOMATiV LLM API",
         version="0.1.0",
-        summary="An API for the **KI-InnOMATiV** project",
+        #summary="An API for the **KI-InnOMATiV** project",
         description="This API is part of the **KI-InnOMATiV** project and offers several functionalities for LLM usage.",
         routes=app.routes,
     )
@@ -51,7 +53,18 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30
 user_manager = UserManager()
 user_db = user_manager.get_user_db()
 
+##################################
+# Redirect to landing page
+##################################
+
+@app.get("/", include_in_schema=False)
+async def docs_redirect():
+    return RedirectResponse(url='/docs')
+
+
+###################################
 # Security
+###################################
 
 password_hash = PasswordHash.recommended()
 
@@ -206,34 +219,38 @@ async def change_password(
 
 # Logic for answering queries
 
-# Request-Body definieren
+# Request-Body
 class Item(BaseModel):
     name: str
     price: float
     in_stock: bool = True
 
 # Einfacher GET Endpoint
-@app.get("/")
-def root():
-    return {"message": "Hello FastAPI", "test": test()}
+#@app.get("/")
+#def root():
+#    return {"message": "Hello FastAPI", "test": test()}
 
 # GET mit Path-Parameter
-@app.get("/items/{item_id}")
-def get_item(item_id: int, current_user: Annotated[User, Depends(get_current_active_user)]):
-    return {"item_id": item_id}
+#@app.get("/items/{item_id}")
+#def get_item(item_id: int, current_user: Annotated[User, Depends(get_current_active_user)]):
+#    return {"item_id": item_id}
 
 # POST Endpoint mit JSON Body
-@app.post("/items")
-def create_item(item: Item, current_user: Annotated[User, Depends(get_current_active_user)]):
-    return {
-        "message": "Item received",
-        "data": item
-    }
+#@app.post("/items")
+#def create_item(item: Item, current_user: Annotated[User, Depends(get_current_active_user)]):
+#    return {
+#        "message": "Item received",
+#        "data": item
+#    }
 
 #@app.post("/upload_csv/")
 #async def upload_csv_file(file: UploadFile = File(...)):
 #    contents = await file.read()
 #    return simple_bpmn(contents, file.filename)
+
+###################################
+# Queries
+###################################
 
 @app.get("/query")
 async def get_query(query: str, current_user: Annotated[User, Depends(get_current_active_user)]):
