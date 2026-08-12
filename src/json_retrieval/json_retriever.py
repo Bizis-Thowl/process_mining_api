@@ -42,10 +42,9 @@ class JSONRetriever():
         else:
             self.qdr_client = QdrantClient(path=os.getenv("PROJECT_DIR")+"/json_retrieval/local_data/embeddings")
         self.create_collection(self.vector_store_name, vec_dim)
-        
 
+        self.init_embeddings()
         
-        self.embedder = JSONEmbedder(self.embeddings,self.qdr_client,self.vector_store)
 
     def init_ollama(self):
         was_successfull = None
@@ -60,7 +59,7 @@ class JSONRetriever():
             was_successfull = False
         return was_successfull
 
-    def init_vector_store(self):
+    def init_embeddings(self):
         was_successfull = self.init_ollama()
         if was_successfull is not True:
             print("Embeddings not initialized. Cannot initialize vector store.")
@@ -71,11 +70,14 @@ class JSONRetriever():
                     collection_name=self.vector_store_name,
                     embedding=self.embeddings
                 )
+                self.embedder = JSONEmbedder(self.qdr_client,self.vector_store)
             except Exception as e:
                 print(e)
                 print("Vector store not initialized. Cannot initialize vector store.")
                 was_successfull = False
+
         return was_successfull
+        
                 
     
     def retrieve(self, query, num_results=4):
@@ -103,7 +105,7 @@ class JSONRetriever():
 
 class JSONEmbedder():
     
-    def __init__(self,embeddings,client,vector_store):
+    def __init__(self,client,vector_store):
         super().__init__()
         #self.embeddings = embeddings
         self.client = client
@@ -244,7 +246,7 @@ class RetrievalController:
 
     def init_embeddings(self):
         self.json_retriever.init_ollama()
-        self.json_retriever.init_vector_store()
+        self.json_retriever.init_embeddings()
     
         
 def embedding_creation(vec_dim: int):
