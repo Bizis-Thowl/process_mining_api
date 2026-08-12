@@ -24,7 +24,7 @@ class JSONRetriever():
     """
     Future work will happen in process_mining_api!
     """
-    def __init__(self, vector_store_name ="json_embedding", qdrant_url :str = None):
+    def __init__(self, vector_store_name ="json_embedding", qdrant_url :str = None, vec_dim: int = 4096):
         
         self.vector_store_name = vector_store_name
         #self.tracer = init_phoenix("json_retriever")
@@ -35,24 +35,48 @@ class JSONRetriever():
         #    base_url=os.getenv("EMB_BASE_URL")
         #)
 
-        self.embeddings = OllamaEmbeddings(
-            model=os.getenv("EMB_MODEL"),
-            validate_model_on_init=True,
-            base_url=os.getenv("EMB_BASE_URL"),)
-        
+        self.init_ollama()
+
         if qdrant_url is not None:
             self.qdr_client = QdrantClient(url = qdrant_url)
         else:
             self.qdr_client = QdrantClient(path=os.getenv("PROJECT_DIR")+"/json_retrieval/local_data/embeddings")
-        self.create_collection(self.vector_store_name)
+        self.create_collection(self.vector_store_name, vec_dim)
         
-        self.vector_store = QdrantVectorStore(
-            client=self.qdr_client,
-            collection_name=self.vector_store_name,
-            embedding=self.embeddings
-        )
+
         
         self.embedder = JSONEmbedder(self.embeddings,self.qdr_client,self.vector_store)
+
+    def init_ollama(self):
+        was_successfull = None
+        try:
+            self.embeddings = OllamaEmbeddings(
+                model=os.getenv("EMB_MODEL"),
+                validate_model_on_init=True,
+                base_url=os.getenv("EMB_BASE_URL"),)
+            was_successfull = True
+        except Exception as e:
+            print(e)
+            was_successfull = False
+        return was_successfull
+
+    def init_vector_store(self):
+        was_successfull = self.init_ollama()
+        if was_successfull is not True:
+            print("Embeddings not initialized. Cannot initialize vector store.")
+        else:
+            try:
+                self.vector_store = QdrantVectorStore(
+                    client=self.qdr_client,
+                    collection_name=self.vector_store_name,
+                    embedding=self.embeddings
+                )
+            except Exception as e:
+                print(e)
+                print("Vector store not initialized. Cannot initialize vector store.")
+                was_successfull = False
+        return was_successfull
+                
     
     def retrieve(self, query, num_results=4):
         #query_emb = self.embedder.get_embedding(query,os.getenv("EMB_MODEL"))
@@ -64,15 +88,15 @@ class JSONRetriever():
     
     def embed_json(self,json_data):
         chunks = self.chunker.chunk_json(json_data)
-        self.create_collection(self.vector_store_name)
+        #self.create_collection(self.vector_store_name, vec_dim)
         embedding = self.embedder.create_json_embedding(chunks)
 
-    def create_collection(self, name:str):
+    def create_collection(self, name:str, size: int = 4096):
         #Create new collection with the given name if it does not exist
         if not self.qdr_client.collection_exists(name):
             self.qdr_client.create_collection(
                 collection_name=name,
-                vectors_config=VectorParams(size=4096, distance=Distance.COSINE),
+                vectors_config=VectorParams(size=size, distance=Distance.COSINE),
             )
 
 
@@ -81,7 +105,7 @@ class JSONEmbedder():
     
     def __init__(self,embeddings,client,vector_store):
         super().__init__()
-        self.embeddings = embeddings
+        #self.embeddings = embeddings
         self.client = client
         self.vector_store = vector_store
 
@@ -114,9 +138,9 @@ class JSONChunker:
 
 class RetrievalController:
 
-    def __init__(self, vector_store_name, qdrant_url:str = None):
+    def __init__(self, vector_store_name, qdrant_url:str = None, vec_dim :int = 4096):
         load_dotenv()
-        self.json_retriever = JSONRetriever(vector_store_name, qdrant_url)
+        self.json_retriever = JSONRetriever(vector_store_name, qdrant_url, vec_dim)
         self.tracer = init_phoenix("json_doc-retrieval")
         self.client = self.init_client()
 
@@ -217,13 +241,18 @@ class RetrievalController:
             span.set_output(response.model_dump())
             span.set_status(StatusCode.OK)
         return response
+
+    def init_embeddings(self):
+        self.json_retriever.init_ollama()
+        self.json_retriever.init_vector_store()
+    
         
-def embedding_creation():
+def embedding_creation(vec_dim: int):
     vector_store_name = os.getenv("VECTOR_STORE_NAME")
 
     qdrant_url = "http://localhost:6333/"
     
-    controller = RetrievalController(vector_store_name, qdrant_url)
+    controller = RetrievalController(vector_store_name, qdrant_url, vec_dim)
 
     json_data = controller.load_data("Datenmodell-2026-06-10_18-13-17-Entwicklung.json")
         
@@ -243,7 +272,7 @@ def embedding_creation():
 if __name__ == "__main__":
    
 
-    embedding_creation()
+    embedding_creation(vec_dim=2560)
     #json_embedder = JSONEmbedder()
 
     
