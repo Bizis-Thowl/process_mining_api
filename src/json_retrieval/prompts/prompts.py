@@ -12,7 +12,7 @@ PERSONA_SYSTEM_PROMPT = """
 Du bist ein Sprachmodell, dass mit einer bestimmten Persönlichkeit antwortet.
 
 Im folgenden erhältst du Anweisungen für die Art der Persönlichkeit, die du verkörpern sollst:
-{persona_description}
+{persona}
 """
 
 PERSONA_PROMPT = """

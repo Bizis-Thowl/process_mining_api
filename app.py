@@ -273,8 +273,8 @@ def test_model(query: str, current_user: Annotated[User, Depends(get_current_act
     return {"query": query, "response": response}
 
 @app.get("/test_persona")
-def test_persona_with_model(query: str, persona: str, current_user: Annotated[User, Depends(get_current_active_user)],model: str = "Qwen/Qwen3.6-27B-FP8"):
-    response = query_handler.test_persona(query, persona, model)
+def test_persona_with_model(query: str, persona: str, current_user: Annotated[User, Depends(get_current_active_user)], model:str = "Qwen/Qwen3.6-27B-FP8"):
+    response = query_handler.test_persona(query, model, persona)
     return {"query": query, "persona": persona, "response": response}
 
 app.get("/init_embeddings")

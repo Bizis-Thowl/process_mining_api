@@ -28,6 +28,6 @@ class QueryHandler():
         response = self.__retriever_controller.test_query(query, model)
         return response
 
-    def test_persona(self, query: str, persona: str, model: str):
-        response = self.__retriever_controller.test_query(query, persona, model)
+    def test_persona(self, query: str, model: str, persona: str):
+        response = self.__retriever_controller.test_query(query, model, persona)
         return response
