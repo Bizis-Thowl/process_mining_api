@@ -251,7 +251,7 @@ class Item(BaseModel):
 ###################################
 # Queries
 ###################################
-
+"""
 @app.get("/query")
 async def get_query(query: str, current_user: Annotated[User, Depends(get_current_active_user)]):
     response = query_handler.simple_query(query)
@@ -277,7 +277,49 @@ def test_persona_with_model(query: str, persona: str, current_user: Annotated[Us
     response = query_handler.test_persona(query, model, persona)
     return {"query": query, "persona": persona, "response": response}
 
-app.get("/init_embeddings")
+@app.get("/init_embeddings")
 def init_embeddings(current_user: Annotated[User, Depends(get_current_active_user)]):
     query_handler.init_embeddings()
     return {"message": "Embeddings initialized successfully."}
+"""
+
+# Functions for test_system
+
+class Document(BaseModel):
+    doc_id: int
+    chunks: list[str]
+
+class UserQuery(BaseModel):
+    query: str
+    session_id: int
+    model:str = "Qwen/Qwen3.8-27B"
+    with_doc_search: bool = False
+    documents: list[Document] = None
+    persona: str = None
+    tracing_id = None
+
+
+@app.post("/user_query")
+async def user_query(user_query: UserQuery, current_user: Annotated[User, Depends(get_current_active_user)]):
+    #Error handling
+    context_overflow = False
+    if context_overflow:
+        raise HTTPException(status_code=413, detail="Context overflow: The model cannot handle the size of this request.")
+    wrong_modelname = False
+    if wrong_modelname:
+        raise HTTPException(status_code=400, detail="The modelname is wrong")
+    return {"response":"This function is not implemented yet","chunk_ids": ["1","2","3"]}
+
+@app.put("/chunks/{chunk_id}")
+async def update_chunk(item_id:str, current_user: Annotated[User, Depends(get_current_active_user)]):
+    chunk_not_found = False
+    if chunk_not_found:
+        raise HTTPException(status_code=404, detail="Chunk not found.")
+    return "This function is not implemented yet"
+
+@app.delete("/chunks/{chunk_id}")
+async def delete_chunk(item_id:str, current_user: Annotated[User, Depends(get_current_active_user)]):
+    chunk_not_found = False
+    if chunk_not_found:
+        raise HTTPException(status_code=404, detail="Chunk not found.")
+    return "This function is not implemented yet."
