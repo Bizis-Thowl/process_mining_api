@@ -169,7 +169,7 @@ async def login_for_access_token(
     )
     return Token(access_token=access_token, token_type="bearer")
 
-
+"""
 @app.get("/users/me/")
 async def read_users_me(
     current_user: Annotated[User, Depends(get_current_active_user)],
@@ -182,7 +182,8 @@ async def read_own_items(
     current_user: Annotated[User, Depends(get_current_active_user)],
 ):
     return [{"item_id": "Foo", "owner": current_user.username}]
-
+"""
+    
 @app.post("/users/me/change_password/")
 async def change_password(
     form_data: Annotated[NewPasswordForm, Depends()] 
@@ -311,14 +312,14 @@ async def user_query(user_query: UserQuery, current_user: Annotated[User, Depend
     return {"response":"This function is not implemented yet","chunk_ids": ["1","2","3"]}
 
 @app.put("/chunks/{chunk_id}")
-async def update_chunk(item_id:str, current_user: Annotated[User, Depends(get_current_active_user)]):
+async def update_chunk(chunk_id:str, current_user: Annotated[User, Depends(get_current_active_user)]):
     chunk_not_found = False
     if chunk_not_found:
         raise HTTPException(status_code=404, detail="Chunk not found.")
     return "This function is not implemented yet"
 
 @app.delete("/chunks/{chunk_id}")
-async def delete_chunk(item_id:str, current_user: Annotated[User, Depends(get_current_active_user)]):
+async def delete_chunk(chunk_id:str, current_user: Annotated[User, Depends(get_current_active_user)]):
     chunk_not_found = False
     if chunk_not_found:
         raise HTTPException(status_code=404, detail="Chunk not found.")
