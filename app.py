@@ -296,7 +296,7 @@ class UserQuery(BaseModel):
     with_doc_search: bool = False
     documents: list[Document] = None
     persona: str = None
-    tracing_id = None
+    tracing_id:str = None
 
 
 @app.post("/user_query")
