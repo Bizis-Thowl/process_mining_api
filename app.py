@@ -23,13 +23,36 @@ from process_mining_api.llm_response import QueryHandler
 
 #from database import fake_users_db
 
+
+tags_metadata = [
+    {
+        "name": "users",
+        "description": "Operations with users. The **login** logic is also here.",
+    },
+    {
+        "name": "queries",
+        "description": "The user-queries are in this section.",
+    },
+    {
+        "name": "chunks",
+        "description": "Operations for adding, deleting and updating the Chunk-Database",
+    },
+    {
+        "name": "models",
+        "description": "All the functions that are related to the models",
+    }
+]
+
 # FastAPI App initialisieren
-app = FastAPI()
+app = FastAPI(title="KI-InnOMATiV LLM API",
+        version="0.2.0",
+        description="This API is part of the **KI-InnOMATiV** project and offers several functionalities for LLM usage.",
+        openapi_tags=tags_metadata)
 
 query_handler = QueryHandler()
 
 # Configuration
-
+"""
 def custom_openapi():
     if app.openapi_schema:
         return app.openapi_schema
@@ -42,8 +65,8 @@ def custom_openapi():
     )
     app.openapi_schema = openapi_schema
     return app.openapi_schema
-
-app.openapi = custom_openapi
+"""
+#app.openapi = custom_openapi
 
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM")
@@ -152,7 +175,7 @@ async def get_current_active_user(
     return current_user
 
 
-@app.post("/token")
+@app.post("/token", tags=["users"])
 async def login_for_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
 ) -> Token:
@@ -184,7 +207,7 @@ async def read_own_items(
     return [{"item_id": "Foo", "owner": current_user.username}]
 """
     
-@app.post("/users/me/change_password/")
+@app.post("/users/me/change_password/", tags=["users"])
 async def change_password(
     form_data: Annotated[NewPasswordForm, Depends()] 
 ):
@@ -290,18 +313,32 @@ class Document(BaseModel):
     doc_id: int
     chunks: list[str]
 
+class SearchCriteria(BaseModel):
+    source_ids: list[str]
+    user_roles: list[str]
+
 class UserQuery(BaseModel):
     query: str
     session_id: int
     model:str = "Qwen/Qwen3.8-27B"
     with_doc_search: bool = False
+    search_criteria: SearchCriteria = None
     documents: list[Document] = None
     persona: str = None
     tracing_id:str = None
 
+class Response(BaseModel):
+    query_id: str
+    session_id: str
+    text: str
+    retrieved_chunk_ids: list[str] = None
 
-@app.post("/user_query")
-async def user_query(user_query: UserQuery, current_user: Annotated[User, Depends(get_current_active_user)]):
+
+@app.post("/user_query", tags=["queries"])
+async def user_query(
+    user_query: UserQuery,
+    current_user: Annotated[User, Depends(get_current_active_user)]
+    )-> Response:
     #Error handling
     context_overflow = False
     if context_overflow:
@@ -309,18 +346,32 @@ async def user_query(user_query: UserQuery, current_user: Annotated[User, Depend
     wrong_modelname = False
     if wrong_modelname:
         raise HTTPException(status_code=400, detail="The modelname is wrong")
-    return {"response":"This function is not implemented yet","chunk_ids": ["1","2","3"]}
+    return {"query_id": "1234", "session_id": user_query.session_id, "text":"This function is not implemented yet","retrieved_chunk_ids": ["1","2","3"]}
 
-@app.put("/chunks/{chunk_id}")
-async def update_chunk(chunk_id:str, current_user: Annotated[User, Depends(get_current_active_user)]):
+class Chunk(BaseModel):
+    chunk_id: str
+    text: str
+    role_access: list[str]
+    source_id: str = None
+
+@app.put("/chunks/{chunk_id}", tags=["chunks"])
+async def update_chunk(chunk:Chunk, current_user: Annotated[User, Depends(get_current_active_user)]):
     chunk_not_found = False
     if chunk_not_found:
         raise HTTPException(status_code=404, detail="Chunk not found.")
     return "This function is not implemented yet"
+    
 
-@app.delete("/chunks/{chunk_id}")
+@app.delete("/chunks/{chunk_id}", tags=["chunks"])
 async def delete_chunk(chunk_id:str, current_user: Annotated[User, Depends(get_current_active_user)]):
     chunk_not_found = False
     if chunk_not_found:
         raise HTTPException(status_code=404, detail="Chunk not found.")
     return "This function is not implemented yet."
+
+@app.get("/models", tags=["models"])
+async def models(current_user: Annotated[User, Depends(get_current_active_user)]):
+    #TODO: Add direct connection to the model-server
+    return {"description": "This would contain a list of models."}
+
+
