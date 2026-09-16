@@ -327,15 +327,21 @@ class UserQuery(BaseModel):
     persona: str = None
     tracing_id:str = None
 
+class Chunk(BaseModel):
+    chunk_id: str
+    text: str
+    role_access: list[str]
+    source_id: str = None
+
 class Response(BaseModel):
     query_id: str
     session_id: str
     text: str
-    retrieved_chunk_ids: list[str] = None
+    retrieved_chunks: list[Chunk] = None
 
 
 @app.post("/user_query", tags=["queries"])
-async def user_query(
+def user_query(
     user_query: UserQuery,
     current_user: Annotated[User, Depends(get_current_active_user)]
     )-> Response:
@@ -348,14 +354,10 @@ async def user_query(
         raise HTTPException(status_code=400, detail="The modelname is wrong")
     return {"query_id": "1234", "session_id": user_query.session_id, "text":"This function is not implemented yet","retrieved_chunk_ids": ["1","2","3"]}
 
-class Chunk(BaseModel):
-    chunk_id: str
-    text: str
-    role_access: list[str]
-    source_id: str = None
+
 
 @app.put("/chunks/{chunk_id}", tags=["chunks"])
-async def update_chunk(chunk:Chunk, current_user: Annotated[User, Depends(get_current_active_user)]):
+def update_chunk(chunk:Chunk, current_user: Annotated[User, Depends(get_current_active_user)]):
     chunk_not_found = False
     if chunk_not_found:
         raise HTTPException(status_code=404, detail="Chunk not found.")
@@ -363,14 +365,26 @@ async def update_chunk(chunk:Chunk, current_user: Annotated[User, Depends(get_cu
     
 
 @app.delete("/chunks/{chunk_id}", tags=["chunks"])
-async def delete_chunk(chunk_id:str, current_user: Annotated[User, Depends(get_current_active_user)]):
+def delete_chunk(chunk_id:str, current_user: Annotated[User, Depends(get_current_active_user)]):
     chunk_not_found = False
     if chunk_not_found:
         raise HTTPException(status_code=404, detail="Chunk not found.")
     return "This function is not implemented yet."
 
+class Abilities(BaseModel):
+    max_context_size: int
+    speed: int
+    multimodal: bool
+
+class Model(BaseModel):
+    name: str 
+    description: str
+    ability_desc: Abilities = None
+
 @app.get("/models", tags=["models"])
-async def models(current_user: Annotated[User, Depends(get_current_active_user)]):
+async def models(
+    current_user: Annotated[User, Depends(get_current_active_user)]
+    )-> list[Model]:
     #TODO: Add direct connection to the model-server
     return {"description": "This would contain a list of models."}
 
