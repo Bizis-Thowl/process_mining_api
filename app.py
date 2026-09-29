@@ -386,8 +386,8 @@ class Model(BaseModel):
 @app.get("/models", tags=["models"])
 async def models(
     current_user: Annotated[User, Depends(get_current_active_user)]
-    )-> list[Model]:
-    models = query_handler.get_models()
-    return models
-
+    ):#-> list[Model]:
+    #models = query_handler.get_models()
+    #return models
+    return {"description": "This would contain a list of models."}
 
