@@ -247,6 +247,11 @@ class RetrievalController:
     def init_embeddings(self):
         self.json_retriever.init_ollama()
         self.json_retriever.init_embeddings()
+
+    def get_models(self):
+        models = self.client.models.list()
+        return models
+            
     
         
 def embedding_creation(vec_dim: int):

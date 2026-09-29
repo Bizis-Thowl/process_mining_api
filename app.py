@@ -320,7 +320,7 @@ class SearchCriteria(BaseModel):
 class UserQuery(BaseModel):
     query: str
     session_id: int
-    model:str = "Qwen/Qwen3.8-27B"
+    model:str = "google/gemma-4-26B-A4B-it"
     with_doc_search: bool = False
     search_criteria: SearchCriteria = None
     documents: list[Document] = None
@@ -335,7 +335,7 @@ class Chunk(BaseModel):
 
 class Response(BaseModel):
     query_id: str
-    session_id: str
+    session_id: int
     text: str
     retrieved_chunks: list[Chunk] = None
 
@@ -347,12 +347,16 @@ def user_query(
     )-> Response:
     #Error handling
     context_overflow = False
+    wrong_modelname = False
     if context_overflow:
         raise HTTPException(status_code=413, detail="Context overflow: The model cannot handle the size of this request.")
     wrong_modelname = False
     if wrong_modelname:
         raise HTTPException(status_code=400, detail="The modelname is wrong")
-    return {"query_id": "1234", "session_id": user_query.session_id, "text":"This function is not implemented yet","retrieved_chunk_ids": ["1","2","3"]}
+    if user_query.persona is None:
+        user_query.persona = "Du bis ein hilfsbereites Sprachmodell"
+    response = query_handler.test_persona(user_query.query, user_query.model, user_query.persona)
+    return {"query_id": "1234", "session_id": user_query.session_id, "text":response.answer,"retrieved_chunk_ids": ["1","2","3"]}
 
 
 
@@ -371,21 +375,19 @@ def delete_chunk(chunk_id:str, current_user: Annotated[User, Depends(get_current
         raise HTTPException(status_code=404, detail="Chunk not found.")
     return "This function is not implemented yet."
 
-class Abilities(BaseModel):
-    max_context_size: int
-    speed: int
-    multimodal: bool
-
 class Model(BaseModel):
     name: str 
     description: str
-    ability_desc: Abilities = None
+    max_input_tokens: int
+    max_output_tokens: int
+    multimodal: bool
+    additional_info: str
 
 @app.get("/models", tags=["models"])
 async def models(
     current_user: Annotated[User, Depends(get_current_active_user)]
     )-> list[Model]:
-    #TODO: Add direct connection to the model-server
-    return {"description": "This would contain a list of models."}
+    models = query_handler.get_models()
+    return models
 
 
