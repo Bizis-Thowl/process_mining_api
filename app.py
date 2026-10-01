@@ -19,7 +19,7 @@ from user_management import UserManager, NewPasswordForm
 
 from process_mining_api.test import test
 from process_mining_api.process_mining_test import simple_bpmn
-from process_mining_api.llm_response import QueryHandler
+from process_mining_api.llm_response import QueryHandler #, ModelHandler
 
 #from database import fake_users_db
 
@@ -50,6 +50,7 @@ app = FastAPI(title="KI-InnOMATiV LLM API",
         openapi_tags=tags_metadata)
 
 query_handler = QueryHandler()
+#model_handler = ModelHandler(query_handler.__retriever_controller)
 
 # Configuration
 """
@@ -386,8 +387,8 @@ class Model(BaseModel):
 @app.get("/models", tags=["models"])
 async def models(
     current_user: Annotated[User, Depends(get_current_active_user)]
-    ):#-> list[Model]:
-    #models = query_handler.get_models()
-    #return models
-    return {"description": "This would contain a list of models."}
+    )-> list[Model]:
+    models = query_handler.get_models()
+    return models
+    #return {"description": "This would contain a list of models."}
 
