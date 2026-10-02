@@ -43,10 +43,28 @@ tags_metadata = [
     }
 ]
 
+description = """
+This API is part of the **KI-InnOMATiV** project and offers several functionalities for LLM usage.
+
+<details>
+<summary>This is the current status on the implementation of the methods:</summary>
+
+||Method|Status|
+|------|-------|-------|
+| &#x2705; | /token | Done |
+| &#x2705; | /users/me/change_password | Done |
+| &#x2705; | /models | Done |
+| &#x25b6; | PUT /chunks | In progress |
+| &#x274c; | DELETE /chunks | Not started |
+| &#x274c; | /user_query | Not started |
+
+</details>
+"""
+
 # FastAPI App initialisieren
 app = FastAPI(title="KI-InnOMATiV LLM API",
         version="0.2.0",
-        description="This API is part of the **KI-InnOMATiV** project and offers several functionalities for LLM usage.",
+        description=description,
         openapi_tags=tags_metadata)
 
 query_handler = QueryHandler()

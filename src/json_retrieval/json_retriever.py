@@ -21,9 +21,7 @@ from json_retrieval.prompts.prompts import SELECTION_PROMPT, SELECTION_SYSTEM_PR
 
 
 class JSONRetriever():
-    """
-    Future work will happen in process_mining_api!
-    """
+
     def __init__(self, vector_store_name ="json_embedding", qdrant_url :str = None, vec_dim: int = 4096):
         
         self.vector_store_name = vector_store_name
@@ -49,9 +47,9 @@ class JSONRetriever():
     def init_ollama(self):
         was_successfull = None
         try:
-            self.embeddings = OllamaEmbeddings(
+            self.embeddings = OpenAIEmbeddings(
                 model=os.getenv("EMB_MODEL"),
-                validate_model_on_init=True,
+                #validate_model_on_init=True,
                 base_url=os.getenv("EMB_BASE_URL"),)
             was_successfull = True
         except Exception as e:
@@ -277,9 +275,9 @@ def embedding_creation(vec_dim: int):
     controller.json_retriever.qdr_client.close()
 
 if __name__ == "__main__":
-   
 
-    embedding_creation(vec_dim=2560)
+    retrieval_controller = RetrievalController("Test_name")
+    #embedding_creation(vec_dim=2560)
     #json_embedder = JSONEmbedder()
 
     

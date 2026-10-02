@@ -49,27 +49,6 @@ class QueryHandler():
                             "multimodal": m["multimodal"],
                             "additional_info": m["additional_info"]})
         return response
-"""
-class ModelHandler():
-
-    def __init__(self, retriever_controller):
-        self.__retriever_controller = retriever_controller
-
-    def get_models(self):
-            models = self.__retriever_controller.get_models()
-            response = []
-            for m in INFORMATION.list:
-                for model in models:
-                    if m.id == model.id:
-                        response.append({
-                            "name":m.id,
-                            "description":m.description,
-                            "max_input_tokens": model.max_input_tokens,
-                            "max_output_tokens": model.max_output_tokens,
-                            "multimodal": m.multimodal,
-                            "additional_info": m.additional_info})
-
-            return response"""
 
 if __name__ == "__main__":
     query_handler = QueryHandler()
