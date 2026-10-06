@@ -20,13 +20,16 @@ from process_mining_api.responsemodels.basic_response import BasicResponse
 from json_retrieval.prompts.prompts import SELECTION_PROMPT, SELECTION_SYSTEM_PROMPT, TEST_PROMPT, TEST_SYSTEM_PROMPT, PERSONA_PROMPT, PERSONA_SYSTEM_PROMPT
 
 
-class JSONRetriever():
+class Retriever():
 
-    def __init__(self, vector_store_name ="json_embedding", qdrant_url :str = None, vec_dim: int = 4096):
-        
-        self.vector_store_name = vector_store_name
+    def __init__(self, vector_store_name = None, qdrant_url :str = None, vec_dim: int = 4096):
+
+        if vector_store_name is None:
+            self.vector_store_name = os.getenv("VECTOR_STORE_NAME")
+        else:
+            self.vector_store_name = vector_store_name
         #self.tracer = init_phoenix("json_retriever")
-        self.chunker = JSONChunker()
+        #self.chunker = JSONChunker()
         
         #self.embeddings = OpenAIEmbeddings(
         #    model=os.getenv("EMB_MODEL"),
@@ -68,15 +71,13 @@ class JSONRetriever():
                     collection_name=self.vector_store_name,
                     embedding=self.embeddings
                 )
-                self.embedder = JSONEmbedder(self.qdr_client,self.vector_store)
+                self.embedder = Embedder(self.qdr_client,self.vector_store)
             except Exception as e:
                 print(e)
                 print("Vector store not initialized. Cannot initialize vector store.")
                 was_successfull = False
 
-        return was_successfull
-        
-                
+        return was_successfull           
     
     def retrieve(self, query, num_results=4):
         #query_emb = self.embedder.get_embedding(query,os.getenv("EMB_MODEL"))
@@ -91,6 +92,11 @@ class JSONRetriever():
         #self.create_collection(self.vector_store_name, vec_dim)
         embedding = self.embedder.create_json_embedding(chunks)
 
+    def embed(self, chunk_id: str, text: str, role_access: list[str], source_id: str = None):
+        response = self.embedder.create_embedding(chunk_id,text,role_access,source_id)
+
+        return response
+
     def create_collection(self, name:str, size: int = 4096):
         #Create new collection with the given name if it does not exist
         if not self.qdr_client.collection_exists(name):
@@ -101,14 +107,21 @@ class JSONRetriever():
 
 
 
-class JSONEmbedder():
+class Embedder():
     
     def __init__(self,client,vector_store):
-        super().__init__()
+        #super().__init__()
         #self.embeddings = embeddings
         self.client = client
         self.vector_store = vector_store
 
+    # TODO: Make this more flexible. Incorporate in Retreiver and let the vector_stroe be exchangeable 
+    def create_embedding(self, chunk_id: str, text: str, role_access: list[str], source_id: str = None):
+        response = self.vector_store.add_texts(texts= [text], metadatas=[{"id": chunk_id, "role_access": role_access, "source_id": source_id}],ids=[uuid4()])
+        #TODO: Add check for already existing chunk here!
+        return response
+
+    """
     def create_json_embedding(self,json_data):
         uuids = [str(uuid4()) for _ in range(len(json_data))]
         str_chunks = []
@@ -119,8 +132,8 @@ class JSONEmbedder():
         self.vector_store.add_texts(
             texts=str_chunks,
             ids=uuids)
-
-
+    """
+"""
 class JSONChunker:
     
     def __init__(self):
@@ -133,14 +146,14 @@ class JSONChunker:
     
     def return_chunk(self, uuid):
         return self.chunks[uuid]
-
+"""
 
 
 class RetrievalController:
 
     def __init__(self, vector_store_name, qdrant_url:str = None, vec_dim :int = 4096):
         load_dotenv()
-        self.json_retriever = JSONRetriever(vector_store_name, qdrant_url, vec_dim)
+        self.retriever = Retriever(vector_store_name, qdrant_url, vec_dim)
         self.tracer = init_phoenix("json_doc-retrieval")
         self.client = self.init_client()
 
@@ -149,75 +162,6 @@ class RetrievalController:
         client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"), base_url=os.getenv("BASE_URL"))
         client = instructor.from_openai(client, mode=instructor.Mode.JSON, )
         return client
-
-    def set_tracing_id(self, tracing_id: str):
-        self.tracer = init_phoenix(tracing_id)
-        
-
-    def load_data(self, filename):
-        with open( f"src/json_retrieval/local_data/{filename}", "r", encoding="utf-8") as f:
-            json_data = json.load(f)
-        return json_data
-
-    def re_chunk_json(self, json_data):
-        self.json_retriever.chunker.chunk_json(json_data)
-    
-    def get_id_label(self, chunk, metadata):
-        # Recieves a String of a chunk and its metadata and returns the a label and id
-        label_pattern = re.compile(r"'label': \{'de':\s*'(.*?)'",  flags=re.MULTILINE) #TODO: add {'tooltiplabelid': ??
-        #id_pattern = re.compile(r"'_id': '(.*?)'")
-        label = re.findall(label_pattern,chunk)[0]
-        id = metadata["_id"]
-        return label, id
-    
-    def get_labels(self, chunks):
-        df_chunks = pd.DataFrame(chunks,columns=["output","value"])
-        label_pattern = re.compile(r"'label': \{'de':\s*'(.*?)'",  flags=re.MULTILINE)
-        df_labels = pd.DataFrame(columns=["id","label"])
-        for i, row in df_chunks.iterrows():
-            doc= row["output"]
-            label = re.findall(label_pattern,doc.page_content)
-            id = doc.metadata["_id"]
-            df_labels.loc[i]=[id,label]
-        return df_labels
-
-    def simple_query(self, query):
-        return self.json_retriever.retrieve(query,25)
-    
-    def simple_query_json(self, query: str)-> dict: 
-        response_list = self.simple_query(query)
-        json_list = []
-        for i, doc in enumerate(response_list):
-            content = doc[0].page_content.replace("\'","\"")
-            json_list.append({"page_content": content, "metadata": doc[0].metadata})
-        #raw_str = raw_str.replace("\'","\"")
-        #json_obj = json.loads(raw_str)
-        return json_list
-    
-
-    def create_prompt(self, search_result: str, query_str: str):
-        prompt = SELECTION_PROMPT.format(json_response=search_result, user_query=query_str)    
-        return prompt
-    
-    def simple_llm_response(self, query :str, response_model = BasicResponse):
-        MODEL = os.getenv("MODEL")
-        json_response = self.simple_query_json(query)
-        print(json_response)
-        prompt = self.create_prompt(json_response, query)
-        with self.tracer.start_as_current_span("LLM_Response", openinference_span_kind="agent") as span:
-            span.set_input(prompt)
-            
-            response = self.client.chat.completions.create(
-                model=MODEL,
-                messages=[
-                    {"role": "system", "content": SELECTION_SYSTEM_PROMPT},
-                    {"role": "user", "content": prompt}
-                ],
-                response_model=response_model
-            )
-            span.set_output(response.model_dump())
-            span.set_status(StatusCode.OK)
-        return response
 
     def test_query(self, query: str, model: str, persona: str = None):
         if persona is None:
@@ -243,12 +187,16 @@ class RetrievalController:
         return response
 
     def init_embeddings(self):
-        self.json_retriever.init_ollama()
-        self.json_retriever.init_embeddings()
+        self.retriever.init_ollama()
+        self.retriever.init_embeddings()
 
     def get_models(self):
         models = self.client.models.list()
         return models
+
+    def update_chunk(self, chunk_id: str, text: str, role_access: list[str], source_id: str = None):
+        self.retriever.embed(chunk_id,text,role_access,source_id)
+        
             
     
         
@@ -263,7 +211,7 @@ def embedding_creation(vec_dim: int):
         
     controller.re_chunk_json(json_data)
     
-    controller.json_retriever.embed_json(json_data)
+    controller.retriever.embed_json(json_data)
 
     query = "Wie kann ich ein Objekt erstellen?"
 
@@ -272,11 +220,44 @@ def embedding_creation(vec_dim: int):
 
     query_response = controller.simple_llm_response(query)
     print(query_response)
-    controller.json_retriever.qdr_client.close()
+    controller.retriever.qdr_client.close()
+
+
 
 if __name__ == "__main__":
 
-    retrieval_controller = RetrievalController("Test_name")
+    text = """
+    1. Der letzte Regenschirm
+
+    Jeden Morgen stellte Daniel einen Regenschirm vor seine Wohnungstür.
+
+    Er brauchte ihn nicht. Es war immer sonnig.
+
+    Eines Tages klopfte ein kleines Mädchen an seine Tür.
+
+    „Gehört der dir?“, fragte sie und hielt den Regenschirm hoch.
+
+    „Nein“, sagte Daniel. „Er gehört demjenigen, der ihn braucht.“
+
+    Das Mädchen lächelte und nahm ihn.
+
+    Am Nachmittag begann es zum ersten Mal seit Jahren zu regnen.
+
+    Daniel stand draußen und wurde völlig nass.
+
+    Plötzlich hielt jemand einen Regenschirm über seinen Kopf.
+
+    Es war das kleine Mädchen.
+
+    „Sieht so aus, als würdest du ihn heute brauchen“, sagte sie.
+    """
+    qdrant_url = "http://localhost:6333"
+    retrieval_controller = RetrievalController("Test_name",qdrant_url=qdrant_url)
+    retrieval_controller.update_chunk(
+        chunk_id= "Test_id1",
+        text= text,
+        role_access=["admin","user", "user2"],
+        source_id="Datensystem_1")
     #embedding_creation(vec_dim=2560)
     #json_embedder = JSONEmbedder()
 

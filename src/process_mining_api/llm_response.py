@@ -13,7 +13,7 @@ class QueryHandler():
         #self.model_handler = ModelHandler(self.__retriever_controller)
         #except Exception as e:
         #print(e)
-
+    """
     def simple_query(self, query: str):
         response = self.__retriever_controller.simple_query_json(query)
         #df_labels = self.__retriever_controller.get_labels(response)
@@ -29,9 +29,13 @@ class QueryHandler():
     def test_model(self, query: str, model: str):
         response = self.__retriever_controller.test_query(query, model)
         return response
-
+    """
     def test_persona(self, query: str, model: str, persona: str):
         response = self.__retriever_controller.test_query(query, model, persona)
+        return response
+
+    def update_chunk(self, chunk):
+        response = self.__retriever_controller.update_chunk(chunk.chunk_id, chunk.text, chunk.role_access, chunk.source_id)
         return response
 
     def get_models(self):

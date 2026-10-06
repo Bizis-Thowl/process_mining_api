@@ -381,10 +381,11 @@ def user_query(
 
 @app.put("/chunks/{chunk_id}", tags=["chunks"])
 def update_chunk(chunk:Chunk, current_user: Annotated[User, Depends(get_current_active_user)]):
-    chunk_not_found = False
-    if chunk_not_found:
-        raise HTTPException(status_code=404, detail="Chunk not found.")
-    return "This function is not implemented yet"
+    try:
+        query_handler.update_chunk(chunk)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    return "Chunk with the id "+chunk.chunk_id+" successfully created!"
     
 
 @app.delete("/chunks/{chunk_id}", tags=["chunks"])
