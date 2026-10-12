@@ -23,6 +23,10 @@ from process_mining_api.llm_response import QueryHandler #, ModelHandler
 
 #from database import fake_users_db
 
+##################################
+# OpenAPI-Documentation
+##################################
+
 
 tags_metadata = [
     {
@@ -54,8 +58,8 @@ This API is part of the **KI-InnOMATiV** project and offers several functionalit
 | &#x2705; | /token | Done |
 | &#x2705; | /users/me/change_password | Done |
 | &#x2705; | /models | Done |
-| &#x25b6; | PUT /chunks | In progress |
-| &#x274c; | DELETE /chunks | Not started |
+| &#x2705; | PUT /chunks | Done |
+| &#x274c; | DELETE /chunks | In progress |
 | &#x274c; | /user_query | Not started |
 
 </details>
@@ -68,32 +72,6 @@ app = FastAPI(title="KI-InnOMATiV LLM API",
         openapi_tags=tags_metadata)
 
 query_handler = QueryHandler()
-#model_handler = ModelHandler(query_handler.__retriever_controller)
-
-# Configuration
-"""
-def custom_openapi():
-    if app.openapi_schema:
-        return app.openapi_schema
-    openapi_schema = get_openapi(
-        title="KI-InnOMATiV LLM API",
-        version="0.1.0",
-        #summary="An API for the **KI-InnOMATiV** project",
-        description="This API is part of the **KI-InnOMATiV** project and offers several functionalities for LLM usage.",
-        routes=app.routes,
-    )
-    app.openapi_schema = openapi_schema
-    return app.openapi_schema
-"""
-#app.openapi = custom_openapi
-
-SECRET_KEY = os.getenv("SECRET_KEY")
-ALGORITHM = os.getenv("ALGORITHM")
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
-
-
-user_manager = UserManager()
-user_db = user_manager.get_user_db()
 
 ##################################
 # Redirect to landing page
@@ -107,6 +85,14 @@ async def docs_redirect():
 ###################################
 # Security
 ###################################
+
+SECRET_KEY = os.getenv("SECRET_KEY")
+ALGORITHM = os.getenv("ALGORITHM")
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+
+
+user_manager = UserManager()
+user_db = user_manager.get_user_db()
 
 password_hash = PasswordHash.recommended()
 
@@ -267,29 +253,6 @@ class Item(BaseModel):
     name: str
     price: float
     in_stock: bool = True
-
-# Einfacher GET Endpoint
-#@app.get("/")
-#def root():
-#    return {"message": "Hello FastAPI", "test": test()}
-
-# GET mit Path-Parameter
-#@app.get("/items/{item_id}")
-#def get_item(item_id: int, current_user: Annotated[User, Depends(get_current_active_user)]):
-#    return {"item_id": item_id}
-
-# POST Endpoint mit JSON Body
-#@app.post("/items")
-#def create_item(item: Item, current_user: Annotated[User, Depends(get_current_active_user)]):
-#    return {
-#        "message": "Item received",
-#        "data": item
-#    }
-
-#@app.post("/upload_csv/")
-#async def upload_csv_file(file: UploadFile = File(...)):
-#    contents = await file.read()
-#    return simple_bpmn(contents, file.filename)
 
 ###################################
 # Queries
