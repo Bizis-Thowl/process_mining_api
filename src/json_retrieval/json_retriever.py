@@ -71,7 +71,7 @@ class Retriever():
                     collection_name=self.vector_store_name,
                     embedding=self.embeddings
                 )
-                self.embedder = Embedder(self.qdr_client,self.vector_store)
+                self.embedder = Embedder(self.qdr_client,self.vector_store,self.embeddings)
             except Exception as e:
                 print(e)
                 print("Vector store not initialized. Cannot initialize vector store.")
@@ -92,8 +92,8 @@ class Retriever():
         #self.create_collection(self.vector_store_name, vec_dim)
         embedding = self.embedder.create_json_embedding(chunks)
 
-    def embed(self, chunk_id: str, text: str, role_access: list[str], source_id: str = None):
-        response = self.embedder.create_embedding(chunk_id,text,role_access,source_id)
+    def embed(self, collection_name:str, chunk_id: str, text: str, role_access: list[str], source_id: str = None):
+        response = self.embedder.create_embedding(collection_name, chunk_id,text,role_access,source_id)
 
         return response
 
@@ -141,16 +141,18 @@ class Retriever():
 
 class Embedder():
     
-    def __init__(self,client,vector_store):
+    def __init__(self,client,vector_store, embeddings):
         #super().__init__()
         #self.embeddings = embeddings
         self.client = client
         self.vector_store = vector_store
+        self.embeddings = embeddings
 
     # TODO: Make this more flexible. Incorporate in Retreiver and let the vector_stroe be exchangeable 
-    def create_embedding(self, chunk_id: str, text: str, role_access: list[str], source_id: str = None):
+    def create_embedding(self, collection_name, chunk_id: str, text: str, role_access: list[str], source_id: str = None):
+        if self.vector_store.collection_name != collection_name:
+            self.vector_store = QdrantVectorStore(self.client, collection_name, self.embeddings)
         response = self.vector_store.add_texts(texts= [text], metadatas=[{"id": chunk_id, "role_access": role_access, "source_id": source_id}],ids=[uuid4()])
-        #TODO: Add check for already existing chunk here!
         return response
 
     """
@@ -226,8 +228,16 @@ class RetrievalController:
         models = self.client.models.list()
         return models
 
-    def update_chunk(self, chunk_id: str, text: str, role_access: list[str], source_id: str = None):
-        self.retriever.embed(chunk_id,text,role_access,source_id)
+    def update_chunk(self, collection_name: str, chunk_id: str, text: str, role_access: list[str], source_id: str = None):
+        self.retriever.create_collection(collection_name)
+        if self.get_chunk_by_chunk_id(collection_name, chunk_id) is not None:
+            self.delete_chunk(collection_name, chunk_id)
+            was_updated = True
+        else:
+            was_updated = False
+        self.retriever.embed(collection_name, chunk_id,text,role_access,source_id)
+        return was_updated
+
 
     def get_chunk_by_chunk_id(self, collection_name: str, chunk_id: str):
         return self.retriever.get_chunk_by_chunk_id(collection_name,chunk_id)

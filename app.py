@@ -59,8 +59,8 @@ This API is part of the **KI-InnOMATiV** project and offers several functionalit
 | &#x2705; | /users/me/change_password | Done |
 | &#x2705; | /models | Done |
 | &#x2705; | PUT /chunks | Done |
-| &#x274c; | DELETE /chunks | In progress |
-| &#x274c; | /user_query | Not started |
+| &#x2705; | DELETE /chunks | Done |
+| &#x274c; | /user_query |In progress |
 
 </details>
 """
@@ -346,18 +346,21 @@ def user_query(
 @app.put("/chunks/{chunk_id}", tags=["chunks"])
 def update_chunk(chunk:Chunk, current_user: Annotated[User, Depends(get_current_active_user)]):
     try:
-        query_handler.update_chunk(chunk)
+        was_updated = query_handler.update_chunk(chunk)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    return "Chunk with the id "+chunk.chunk_id+" successfully created!"
+    if was_updated:
+        return "Chunk with the id "+chunk.chunk_id+" successfully updated!"
+    else:    
+        return "Chunk with the id "+chunk.chunk_id+" successfully created!"
     
 
 @app.delete("/chunks/{chunk_id}", tags=["chunks"])
 def delete_chunk(chunk_id:str, current_user: Annotated[User, Depends(get_current_active_user)]):
-    response = query_handler.delete_chunk(chunk_id)
-    if response is False:
+    was_deleted = query_handler.delete_chunk(chunk_id)
+    if was_deleted is False:
         raise HTTPException(status_code=404, detail="Chunk not found.")
-    return "This function is not implemented yet."
+    return "Chunk with the id "+chunk_id+" successfully deleted!"
 
 class Model(BaseModel):
     name: str 
