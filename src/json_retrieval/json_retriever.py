@@ -10,7 +10,7 @@ from openai import OpenAI
 from uuid import uuid4
 from langchain_text_splitters import RecursiveJsonSplitter
 from langchain_qdrant import QdrantVectorStore
-from qdrant_client import QdrantClient
+from qdrant_client import QdrantClient, models
 from qdrant_client.http.models import Distance, VectorParams
 from langchain_ollama import OllamaEmbeddings
 from langchain_openai import OpenAIEmbeddings
@@ -97,12 +97,44 @@ class Retriever():
 
         return response
 
+    def get_chunk_by_chunk_id(self,collection_name:str, chunk_id: str):
+        chunk = self.qdr_client.scroll(
+            collection_name=collection_name,
+            scroll_filter=models.Filter(
+                must=[
+                    models.FieldCondition(
+                        key="metadata.id",
+                        match=models.MatchValue(value=chunk_id),
+                    )
+                ]
+            ),
+        )
+        print (chunk)
+        if chunk[1] is not None:
+            return chunk[0][0]
+        else:
+            return None
+
+    def delete_chunk(self,collection_name:str, chunk_id: str):
+        chunk = self.get_chunk_by_chunk_id(collection_name=collection_name,chunk_id=chunk_id)
+        if chunk is not None:
+            self.qdr_client.delete(collection_name=collection_name, points_selector=[chunk.id])
+            return True
+        else:
+            return False
+
     def create_collection(self, name:str, size: int = 4096):
         #Create new collection with the given name if it does not exist
         if not self.qdr_client.collection_exists(name):
             self.qdr_client.create_collection(
                 collection_name=name,
                 vectors_config=VectorParams(size=size, distance=Distance.COSINE),
+            )
+            collection = self.qdr_client.get_collection(name)
+            self.qdr_client.create_payload_index(
+                collection_name=collection.collection_name,
+                field_name="metadata.id",
+                field_schema=models.PayloadSchemaType.KEYWORD,
             )
 
 
@@ -196,6 +228,12 @@ class RetrievalController:
 
     def update_chunk(self, chunk_id: str, text: str, role_access: list[str], source_id: str = None):
         self.retriever.embed(chunk_id,text,role_access,source_id)
+
+    def get_chunk_by_chunk_id(self, collection_name: str, chunk_id: str):
+        return self.retriever.get_chunk_by_chunk_id(collection_name,chunk_id)
+
+    def delete_chunk(self, collection_name: str, chunk_id: str):
+        return self.retriever.delete_chunk(collection_name=collection_name,chunk_id=chunk_id)
         
             
     
@@ -252,12 +290,22 @@ if __name__ == "__main__":
     „Sieht so aus, als würdest du ihn heute brauchen“, sagte sie.
     """
     qdrant_url = "http://localhost:6333"
-    retrieval_controller = RetrievalController("Test_name",qdrant_url=qdrant_url)
+    retrieval_controller = RetrievalController("Test_name_1",qdrant_url=qdrant_url)
+    """
     retrieval_controller.update_chunk(
         chunk_id= "Test_id1",
         text= text,
         role_access=["admin","user", "user2"],
-        source_id="Datensystem_1")
+        source_id="Datensystem_1")"""
+    retrieval_controller.update_chunk(
+            chunk_id= "Test_id2",
+            text= text,
+            role_access=["admin","user", "user2"],
+            source_id="Datensystem_1")
+    resp= retrieval_controller.get_chunk_by_chunk_id("Test_name_1","Test_id2")
+    print(resp)
+    resp_1= retrieval_controller.retriever.delete_chunk("Test_name_1","Test_id1")
+    print(resp_1)
     #embedding_creation(vec_dim=2560)
     #json_embedder = JSONEmbedder()
 

@@ -314,6 +314,7 @@ class Chunk(BaseModel):
     text: str
     role_access: list[str]
     source_id: str = None
+    collection_name: str = "Default_collection"
 
 class Response(BaseModel):
     query_id: str
@@ -353,8 +354,8 @@ def update_chunk(chunk:Chunk, current_user: Annotated[User, Depends(get_current_
 
 @app.delete("/chunks/{chunk_id}", tags=["chunks"])
 def delete_chunk(chunk_id:str, current_user: Annotated[User, Depends(get_current_active_user)]):
-    chunk_not_found = False
-    if chunk_not_found:
+    response = query_handler.delete_chunk(chunk_id)
+    if response is False:
         raise HTTPException(status_code=404, detail="Chunk not found.")
     return "This function is not implemented yet."
 

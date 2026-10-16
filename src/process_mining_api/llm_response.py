@@ -38,6 +38,12 @@ class QueryHandler():
         response = self.__retriever_controller.update_chunk(chunk.chunk_id, chunk.text, chunk.role_access, chunk.source_id)
         return response
 
+    def delete_chunk(self, chunk_id):
+        response = self.__retriever_controller.delete_chunk(
+            collection_name="Default_collection",
+            chunk_id=chunk_id)
+        return response
+
     def get_models(self):
         models = self.__retriever_controller.get_models()
         response = []
