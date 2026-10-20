@@ -109,8 +109,8 @@ class Retriever():
                 ]
             ),
         )
-        print (chunk)
-        if chunk[1] is not None:
+        #print ("chunk:",chunk[0])
+        if chunk[0] != []:
             return chunk[0][0]
         else:
             return None
@@ -220,6 +220,20 @@ class RetrievalController:
             span.set_status(StatusCode.OK)
         return response
 
+    def retrieve_chunks(self, query, search_criteria, documents):
+        source_ids= search_criteria.source_ids
+        user_roles= search_criteria.user_roles
+
+
+
+    def user_query(
+            self, 
+            query: str, 
+            model: str, 
+            persona: str,
+            retrieved_chunks: str = None):
+        pass
+    
     def init_embeddings(self):
         self.retriever.init_ollama()
         self.retriever.init_embeddings()
@@ -300,7 +314,7 @@ if __name__ == "__main__":
     „Sieht so aus, als würdest du ihn heute brauchen“, sagte sie.
     """
     qdrant_url = "http://localhost:6333"
-    retrieval_controller = RetrievalController("Test_name_1",qdrant_url=qdrant_url)
+    retrieval_controller = RetrievalController("Default_collection",qdrant_url=qdrant_url)
     """
     retrieval_controller.update_chunk(
         chunk_id= "Test_id1",
@@ -308,14 +322,15 @@ if __name__ == "__main__":
         role_access=["admin","user", "user2"],
         source_id="Datensystem_1")"""
     retrieval_controller.update_chunk(
+            collection_name= "Default_collection",
             chunk_id= "Test_id2",
             text= text,
             role_access=["admin","user", "user2"],
             source_id="Datensystem_1")
-    resp= retrieval_controller.get_chunk_by_chunk_id("Test_name_1","Test_id2")
+    resp= retrieval_controller.get_chunk_by_chunk_id("Default_collection","Test_id2")
     print(resp)
-    resp_1= retrieval_controller.retriever.delete_chunk("Test_name_1","Test_id1")
-    print(resp_1)
+    #resp_1= retrieval_controller.retriever.delete_chunk("Default_collection","Test_id2")
+    #print(resp_1)
     #embedding_creation(vec_dim=2560)
     #json_embedder = JSONEmbedder()
 

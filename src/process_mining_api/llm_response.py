@@ -65,6 +65,22 @@ class QueryHandler():
                             "additional_info": m["additional_info"]})
         return response
 
+    def user_query(self, user_query):
+        retrieved_chunks = None
+        if user_query.with_doc_search:
+            retrieved_chunks = self.__retriever_controller.retrieve_chunks(
+                query = user_query.query,
+                search_criteria= user_query.search_criteria,
+                documents = user_query.documents
+            )
+        response = self.__retriever_controller.user_query(
+            query = user_query.query,
+            model = user_query.model,
+            persona = user_query.persona,
+            retrieved_chunks= retrieved_chunks
+        )
+        return response
+
 if __name__ == "__main__":
     query_handler = QueryHandler()
     query_handler.get_models()
