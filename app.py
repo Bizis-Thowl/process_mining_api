@@ -296,8 +296,8 @@ class Document(BaseModel):
     chunks: list[str]
 
 class SearchCriteria(BaseModel):
-    source_ids: list[str]
-    user_roles: list[str]
+    source_ids: list[str] = []
+    user_roles: list[str] = []
 
 class UserQuery(BaseModel):
     query: str
@@ -343,7 +343,7 @@ def user_query(
 
 
 
-@app.put("/chunks/{chunk_id}", tags=["chunks"])
+@app.put("/chunks", tags=["chunks"])
 def update_chunk(chunk:Chunk, current_user: Annotated[User, Depends(get_current_active_user)]):
     try:
         was_updated = query_handler.update_chunk(chunk)

@@ -25,16 +25,16 @@ class Retriever():
     def __init__(self, vector_store_name = None, qdrant_url :str = None, vec_dim: int = 4096):
 
         if vector_store_name is None:
-            self.vector_store_name = os.getenv("VECTOR_STORE_NAME")
+            vector_store_name = os.getenv("VECTOR_STORE_NAME")
         else:
             self.vector_store_name = vector_store_name
         #self.tracer = init_phoenix("json_retriever")
         #self.chunker = JSONChunker()
         
-        #self.embeddings = OpenAIEmbeddings(
-        #    model=os.getenv("EMB_MODEL"),
-        #    base_url=os.getenv("EMB_BASE_URL")
-        #)
+        self.embeddings = OpenAIEmbeddings(
+            model=os.getenv("EMB_MODEL"),
+            base_url=os.getenv("EMB_BASE_URL")
+        )
 
         self.init_ollama()
 
@@ -42,7 +42,7 @@ class Retriever():
             self.qdr_client = QdrantClient(url = qdrant_url)
         else:
             self.qdr_client = QdrantClient(path=os.getenv("PROJECT_DIR")+"/json_retrieval/local_data/embeddings")
-        self.create_collection(self.vector_store_name, vec_dim)
+        self.create_collection(vector_store_name, vec_dim)
 
         self.init_embeddings()
         
@@ -83,10 +83,10 @@ class Retriever():
         #query_emb = self.embedder.get_embedding(query,os.getenv("EMB_MODEL"))
         response = self.vector_store.similarity_search_with_score(query, k=num_results)
         return response
-    
+    """
     def retrieve_chunk(self, uuid):
         return self.chunker.return_chunk(uuid)
-    
+    """
     def embed_json(self,json_data):
         chunks = self.chunker.chunk_json(json_data)
         #self.create_collection(self.vector_store_name, vec_dim)
@@ -136,6 +136,51 @@ class Retriever():
                 field_name="metadata.id",
                 field_schema=models.PayloadSchemaType.KEYWORD,
             )
+
+    def set_vector_store(self,collection_name):
+        self.vector_store = QdrantVectorStore(
+            client=self.qdr_client,
+            collection_name=collection_name,
+            embedding=self.embeddings
+        )
+        return self.vector_store
+
+    def retrieve_chunks(self, collection_name, query, source_ids, user_roles, limit:int = 20):
+        
+        if self.vector_store.collection_name != collection_name:
+            self.set_vector_store(collection_name=collection_name)
+        filter = []
+        iterator = 0
+        for source in source_ids:
+            filter[iterator] = models.FieldCondition(
+                key="metadata.source_ids",
+                match=models.MatchValue(
+                    value=source,
+                ),
+            )
+            iterator +=1
+
+        for user_role in user_roles:
+            filter[iterator] = models.FieldCondition(
+                key="metadata.user_roles",
+                match=models.MatchValue(
+                    value=user_role,
+                ),
+            )
+            iterator +=1
+
+        response =self.vector_store.similarity_search_with_score(
+            collection_name=collection_name,
+            query=query,
+            query_filter=models.Filter(
+                must= filter
+            ),
+            search_params=models.SearchParams(hnsw_ef=128, exact=False),
+            limit=limit,
+        )
+        return response
+
+
 
 
 
@@ -220,9 +265,15 @@ class RetrievalController:
             span.set_status(StatusCode.OK)
         return response
 
-    def retrieve_chunks(self, query, search_criteria, documents):
+    def retrieve_chunks(self, collection_name, query, search_criteria, documents=None):
         source_ids= search_criteria.source_ids
         user_roles= search_criteria.user_roles
+        #TODO Add documents to retrieval?
+        return self.retriever.retrieve_chunks(
+            collection_name=collection_name,
+            query = query,
+            source_ids= source_ids,
+            user_roles= user_roles)
 
 
 
@@ -313,6 +364,8 @@ if __name__ == "__main__":
 
     „Sieht so aus, als würdest du ihn heute brauchen“, sagte sie.
     """
+    persona = "Du bist ein entspannter Kollege."
+
     qdrant_url = "http://localhost:6333"
     retrieval_controller = RetrievalController("Default_collection",qdrant_url=qdrant_url)
     """
@@ -320,7 +373,7 @@ if __name__ == "__main__":
         chunk_id= "Test_id1",
         text= text,
         role_access=["admin","user", "user2"],
-        source_id="Datensystem_1")"""
+        source_id="Datensystem_1")
     retrieval_controller.update_chunk(
             collection_name= "Default_collection",
             chunk_id= "Test_id2",
@@ -328,7 +381,17 @@ if __name__ == "__main__":
             role_access=["admin","user", "user2"],
             source_id="Datensystem_1")
     resp= retrieval_controller.get_chunk_by_chunk_id("Default_collection","Test_id2")
-    print(resp)
+    print(resp)"""
+    from pydantic import BaseModel
+    class SearchCriteria(BaseModel):
+        source_ids: list[str] = []
+        user_roles: list[str] = []
+
+    search_criteria=SearchCriteria(source_ids=[],user_roles=[])
+
+    chunks =retrieval_controller.retrieve_chunks("Default_collection",text,search_criteria=search_criteria)
+    print(chunks)
+    #retrieval_controller.user_query(text,os.getenv("EMB_MODEL"),persona)
     #resp_1= retrieval_controller.retriever.delete_chunk("Default_collection","Test_id2")
     #print(resp_1)
     #embedding_creation(vec_dim=2560)

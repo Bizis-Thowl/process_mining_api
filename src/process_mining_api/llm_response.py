@@ -67,8 +67,9 @@ class QueryHandler():
 
     def user_query(self, user_query):
         retrieved_chunks = None
-        if user_query.with_doc_search:
+        if user_query.with_doc_search and user_query.search_criteria is not None:
             retrieved_chunks = self.__retriever_controller.retrieve_chunks(
+                collection = "Default_collection",
                 query = user_query.query,
                 search_criteria= user_query.search_criteria,
                 documents = user_query.documents
