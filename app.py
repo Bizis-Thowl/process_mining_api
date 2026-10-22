@@ -4,7 +4,7 @@ from typing import Annotated
 import jwt
 import os
 
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, Response, HTTPException, status
 #from fastapi import File, UploadFile
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.responses import RedirectResponse
@@ -67,7 +67,7 @@ This API is part of the **KI-InnOMATiV** project and offers several functionalit
 
 # FastAPI App initialisieren
 app = FastAPI(title="KI-InnOMATiV LLM API",
-        version="0.2.0",
+        version="0.3.0",
         description=description,
         openapi_tags=tags_metadata)
 
@@ -310,13 +310,13 @@ class UserQuery(BaseModel):
     tracing_id:str = None
 
 class Chunk(BaseModel):
-    chunk_id: str
+    #chunk_id: str
     text: str
     role_access: list[str]
     source_id: str = None
     collection_name: str = "Default_collection"
 
-class Response(BaseModel):
+class QueryResponse(BaseModel):
     query_id: str
     session_id: int
     text: str
@@ -327,7 +327,7 @@ class Response(BaseModel):
 def user_query(
     user_query: UserQuery,
     current_user: Annotated[User, Depends(get_current_active_user)]
-    )-> Response:
+    )-> QueryResponse:
     #Error handling
     context_overflow = False
     wrong_modelname = False
@@ -343,17 +343,39 @@ def user_query(
 
 
 
-@app.put("/chunks", tags=["chunks"])
-def update_chunk(chunk:Chunk, current_user: Annotated[User, Depends(get_current_active_user)]):
+@app.put("/chunks/{chunk_id}", tags=["chunks"],status_code=status.HTTP_201_CREATED)
+def update_chunk(chunk_id, chunk:Chunk, current_user: Annotated[User, Depends(get_current_active_user)], response: Response):
     try:
-        was_updated = query_handler.update_chunk(chunk)
+        was_updated = query_handler.update_chunk(chunk_id, chunk)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     if was_updated:
-        return "Chunk with the id "+chunk.chunk_id+" successfully updated!"
+        response.status_code = status.HTTP_200_OK
+        return "Chunk with the id "+chunk_id+" successfully updated!"
     else:    
-        return "Chunk with the id "+chunk.chunk_id+" successfully created!"
-    
+        return "Chunk with the id "+chunk_id+" successfully created!"
+
+
+class ChunkResponse(BaseModel):
+    chunk_id: str
+    chunk: Chunk
+
+@app.get("/chunks/{chunk_id}", tags=["chunks"])
+def get_chunk(
+    chunk_id:str,
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    collection_name: str = "Default_collection" 
+    )-> ChunkResponse:
+    response = query_handler.get_chunk(collection_name=collection_name, chunk_id=chunk_id)
+    if response is None:
+            raise HTTPException(status_code=404, detail="Chunk not found.")
+    text = response.payload["page_content"]
+    role_access = response.payload["metadata"]["role_access"]
+    source_id = response.payload["metadata"]["source_id"]
+    collection_name = collection_name
+    return {"chunk_id": chunk_id, "chunk": {"text":text,"role_access":role_access,"source_id":source_id,"collection_name":collection_name}}
+
+
 
 @app.delete("/chunks/{chunk_id}", tags=["chunks"])
 def delete_chunk(chunk_id:str, current_user: Annotated[User, Depends(get_current_active_user)]):
