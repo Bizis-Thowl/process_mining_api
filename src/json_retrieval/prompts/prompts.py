@@ -8,13 +8,6 @@ TEST_SYSTEM_PROMPT = """
 Du bist ein Sprachmodell-Assistent, der Fragen beantworten soll. Du erhältst eine Nutzeranfrage und beantwortest diese.
 """
 
-PERSONA_SYSTEM_PROMPT = """
-Du bist ein Sprachmodell, dass mit einer bestimmten Persönlichkeit antwortet.
-
-Im folgenden erhältst du Anweisungen für die Art der Persönlichkeit, die du verkörpern sollst:
-{persona}
-"""
-
 PERSONA_PROMPT = """
 Bitte beantworte die folgende Frage in der Persönlichkeit, die dir beschrieben wurde:
 {user_query}
@@ -92,3 +85,37 @@ SELECTION_PROMPT = """
 
 """
 
+STANDARD_SYSTEM_PROMPT = """
+Du bist ein Sprachmodell-Assistent, der Fragen beantworten soll. Du erhältst eine Nutzeranfrage und beantwortest diese.
+Dazu erhältst du gegebenenfalls zusätzliche Informationen in der Form von Dokumenten-Chunks, die dir helfen können, die Frage zu beantworten.
+"""
+
+PERSONA_SYSTEM_PROMPT = """
+Du bist ein Sprachmodell-Assistent, der Fragen beantworten soll. Du erhältst eine Nutzeranfrage und beantwortest diese.
+Dazu erhältst du gegebenenfalls zusätzliche Informationen in der Form von Dokumenten-Chunks, die dir helfen können, die Frage zu beantworten.
+
+Du verkörperst bei deinen Antworten eine Persönlichkeit.
+Im Folgenden erhältst du Anweisungen für die Art der Persönlichkeit, die du verkörpern sollst:
+{persona}
+"""
+
+QUERY_PROMPT = """
+Es stehen keine Chunks für die Beantwortung bereit. Bitte beachte, dass du keine Antworten gibst zu denen dir keine Informationen vorliegen.
+
+**Beantworte im Zweifelsfall eine Frage lieber gar nicht, als die Frage falsch zu beantworten**
+
+Dies ist die Anfrage des Users:
+{query}
+"""
+
+QUERY_PROMPT_WITH_CHUNKS = """
+Bitte beachte, dass du keine Antworten gibst zu denen dir keine Informationen vorliegen.
+
+**Beantworte im Zweifelsfall eine Frage lieber gar nicht, als die Frage falsch zu beantworten. Insbesondere, wenn in den Chunks keine relevanten Informationen zu der Frage stehen.**
+
+Dies ist die Anfrage des Users:
+{query}
+
+Zu der Beantwortung liegen die folgenden Chunks vor:
+{chunks}
+"""

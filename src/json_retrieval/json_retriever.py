@@ -1,12 +1,8 @@
 import os
-from dotenv import load_dotenv
-import json
+#import json
 import pandas as pd
-import re
-import instructor
+#import re
 
-from opentelemetry.trace import StatusCode
-from openai import OpenAI
 from uuid import uuid4
 from langchain_text_splitters import RecursiveJsonSplitter
 from langchain_qdrant import QdrantVectorStore
@@ -15,9 +11,8 @@ from qdrant_client.http.models import Distance, VectorParams
 from langchain_ollama import OllamaEmbeddings
 from langchain_openai import OpenAIEmbeddings
 
-from process_mining_api.init_phoenix import init_phoenix
-from process_mining_api.responsemodels.basic_response import BasicResponse
-from json_retrieval.prompts.prompts import SELECTION_PROMPT, SELECTION_SYSTEM_PROMPT, TEST_PROMPT, TEST_SYSTEM_PROMPT, PERSONA_PROMPT, PERSONA_SYSTEM_PROMPT
+from json_retrieval.retrieval_control import RetrievalController
+from json_retrieval.prompts.prompts import SELECTION_PROMPT, SELECTION_SYSTEM_PROMPT
 
 
 class Retriever():
@@ -228,91 +223,6 @@ class JSONChunker:
 """
 
 
-class RetrievalController:
-
-    def __init__(self, vector_store_name, qdrant_url:str = None, vec_dim :int = 4096):
-        load_dotenv()
-        self.retriever = Retriever(vector_store_name, qdrant_url, vec_dim)
-        self.tracer = init_phoenix("json_doc-retrieval")
-        self.client = self.init_client()
-
-    def init_client(self):
-        # Initialize OpenAI client
-        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"), base_url=os.getenv("BASE_URL"))
-        client = instructor.from_openai(client, mode=instructor.Mode.JSON, )
-        return client
-
-    def test_query(self, query: str, model: str, persona: str = None):
-        if persona is None:
-            prompt = TEST_PROMPT.format(user_query=query)
-            system_prompt = TEST_SYSTEM_PROMPT
-        else:
-            prompt = PERSONA_PROMPT.format(user_query=query)
-            system_prompt = PERSONA_SYSTEM_PROMPT.format(persona=persona)
-        
-        with self.tracer.start_as_current_span("Test_Response", openinference_span_kind="agent") as span:
-            span.set_input(prompt)
-                        
-            response = self.client.chat.completions.create(
-                model=model,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": prompt}
-                ],
-                response_model=BasicResponse
-            )
-            span.set_output(response.model_dump())
-            span.set_status(StatusCode.OK)
-        return response
-
-    def retrieve_chunks(self, collection_name, query, search_criteria, documents=None):
-        source_ids= search_criteria.source_ids
-        user_roles= search_criteria.user_roles
-        #TODO Add documents to retrieval?
-        return self.retriever.retrieve_chunks(
-            collection_name=collection_name,
-            query = query,
-            source_ids= source_ids,
-            user_roles= user_roles)
-
-
-
-    def user_query(
-            self, 
-            query: str, 
-            model: str, 
-            persona: str,
-            retrieved_chunks: str = None):
-        pass
-    
-    def init_embeddings(self):
-        self.retriever.init_ollama()
-        self.retriever.init_embeddings()
-
-    def get_models(self):
-        models = self.client.models.list()
-        return models
-
-    def update_chunk(self, collection_name: str, chunk_id: str, text: str, role_access: list[str], source_id: str = None):
-        self.retriever.create_collection(collection_name)
-        if self.get_chunk_by_chunk_id(collection_name, chunk_id) is not None:
-            self.delete_chunk(collection_name, chunk_id)
-            was_updated = True
-        else:
-            was_updated = False
-        self.retriever.embed(collection_name, chunk_id,text,role_access,source_id)
-        return was_updated
-
-
-    def get_chunk_by_chunk_id(self, collection_name: str, chunk_id: str):
-        return self.retriever.get_chunk_by_chunk_id(collection_name,chunk_id)
-
-    def delete_chunk(self, collection_name: str, chunk_id: str):
-        return self.retriever.delete_chunk(collection_name=collection_name,chunk_id=chunk_id)
-        
-            
-    
-        
 def embedding_creation(vec_dim: int):
     vector_store_name = os.getenv("VECTOR_STORE_NAME")
 
@@ -382,48 +292,20 @@ if __name__ == "__main__":
             source_id="Datensystem_1")
     resp= retrieval_controller.get_chunk_by_chunk_id("Default_collection","Test_id2")
     print(resp)"""
-    from pydantic import BaseModel
-    class SearchCriteria(BaseModel):
-        source_ids: list[str] = []
-        user_roles: list[str] = []
+    #from pydantic import BaseModel
+    #class SearchCriteria(BaseModel):
+    #    source_ids: list[str] = []
+    #    user_roles: list[str] = []
 
-    search_criteria=SearchCriteria(source_ids=[],user_roles=[])
+    #search_criteria=SearchCriteria(source_ids=[],user_roles=[])
 
-    chunks =retrieval_controller.retrieve_chunks("Default_collection",text,search_criteria=search_criteria)
-    print(chunks)
-    #retrieval_controller.user_query(text,os.getenv("EMB_MODEL"),persona)
-    #resp_1= retrieval_controller.retriever.delete_chunk("Default_collection","Test_id2")
-    #print(resp_1)
-    #embedding_creation(vec_dim=2560)
-    #json_embedder = JSONEmbedder()
+    #chunks =retrieval_controller.retrieve_chunks("Default_collection",text,search_criteria=search_criteria)
+    #print(chunks)
 
-    
+    answer=retrieval_controller.get_chunk_by_chunk_id("Default_collection",chunk_id="Test_id2")
+    print(answer.payload["page_content"], answer.payload["metadata"]["source_id"],answer.payload["metadata"]["role_access"])
 
-    #json_data = controller.load_data("Datenmodell-2026-06-10_18-13-17-Entwicklung.json")
-    
-    #controller.re_chunk_json(json_data)
-
-    #controller.json_retriever.embed_json(json_data)
-
-    #query = "Wie funktioniert ein Dateiupload?"
-    #query = "Wei kann ich ein Objekt erstellen?"
-    #response = controller.simple_query(query)
-    #print("Response: ", response)
-    
-
-    """
-    df_chunks = pd.DataFrame(response,columns=["output","value"])
-    print(df_chunks)
-    df_chunks.loc[0]["output"]
-    id = response[0][0]
-    print(id)
-    label, id = controller.get_id_label(
-        df_chunks.loc[0]["output"].page_content,
-        df_chunks.loc[0]["output"].metadata)
-    print(label, id)
-    print(controller.get_labels(response))
-    print(df_chunks.loc[5]["output"])
-    #json_retriever.retrieve_chunk(id)"""
+   
 
     
 

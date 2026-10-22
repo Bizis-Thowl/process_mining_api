@@ -1,7 +1,7 @@
 import datetime
 import os
 
-from json_retrieval.json_retriever import RetrievalController
+from json_retrieval.retrieval_control import RetrievalController
 from json_retrieval.local_data.model_information import INFORMATION
 
 
@@ -34,10 +34,10 @@ class QueryHandler():
         response = self.__retriever_controller.test_query(query, model, persona)
         return response
 
-    def update_chunk(self, chunk):
+    def update_chunk(self,chunk_id, chunk):
         response = self.__retriever_controller.update_chunk(
             collection_name = chunk.collection_name,
-            chunk_id = chunk.chunk_id,
+            chunk_id = chunk_id,
             text= chunk.text,
             role_access = chunk.role_access,
             source_id = chunk.source_id)
@@ -63,6 +63,10 @@ class QueryHandler():
                             "max_output_tokens": model.max_output_tokens,
                             "multimodal": m["multimodal"],
                             "additional_info": m["additional_info"]})
+        return response
+
+    def get_chunk(self, collection_name, chunk_id):
+        response = self.__retriever_controller.get_chunk_by_chunk_id(collection_name=collection_name,chunk_id=chunk_id)
         return response
 
     def user_query(self, user_query):
