@@ -1,8 +1,9 @@
 from json_retrieval.json_retriever import Retriever
 from json_retrieval.prompts.prompts import PERSONA_PROMPT, PERSONA_SYSTEM_PROMPT, TEST_PROMPT, TEST_SYSTEM_PROMPT
+from json_retrieval.prompts.prompt_control import generate_prompts
 from process_mining_api.init_phoenix import init_phoenix
 from process_mining_api.responsemodels.basic_response import BasicResponse
-
+from process_mining_api.responsemodels.retrieval_response import RetrievalResponse
 
 import instructor
 from dotenv import load_dotenv
@@ -19,7 +20,7 @@ class RetrievalController:
         load_dotenv()
         self.retriever = Retriever(vector_store_name, qdrant_url, vec_dim)
         self.tracer = init_phoenix("json_doc-retrieval")
-        self.client = self.init_client()
+        self.llm_client = self.init_client()
 
     def init_client(self):
         # Initialize OpenAI client
@@ -38,7 +39,7 @@ class RetrievalController:
         with self.tracer.start_as_current_span("Test_Response", openinference_span_kind="agent") as span:
             span.set_input(prompt)
 
-            response = self.client.chat.completions.create(
+            response = self.llm_client.chat.completions.create(
                 model=model,
                 messages=[
                     {"role": "system", "content": system_prompt},
@@ -65,16 +66,26 @@ class RetrievalController:
             self,
             query: str,
             model: str,
-            persona: str,
+            persona: str = None,
             retrieved_chunks: str = None):
-        pass
+        [system_prompt, user_query]=generate_prompts(query= query, persona = persona, chunks= retrieved_chunks)
+        print(retrieved_chunks)
+        response = self.llm_client.chat.completions.create(
+            model = model,
+            messages = [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_query}
+            ],
+            response_model= RetrievalResponse
+        )
+        return response
 
     def init_embeddings(self):
         self.retriever.init_ollama()
         self.retriever.init_embeddings()
 
     def get_models(self):
-        models = self.client.models.list()
+        models = self.llm_client.models.list()
         return models
 
     def update_chunk(self, collection_name: str, chunk_id: str, text: str, role_access: list[str], source_id: str = None):
@@ -119,23 +130,30 @@ def embedding_creation(vec_dim: int):
     controller.retriever.qdr_client.close()
 
 
+from pydantic import BaseModel
+class SearchCriteria(BaseModel):
+        source_ids: list[str] = []
+        user_roles: list[str] = []
 
 if __name__ == "__main__":
 
-    text = """
+    text1 = """
     1. Der letzte Regenschirm
 
     Jeden Morgen stellte Daniel einen Regenschirm vor seine Wohnungstür.
 
     Er brauchte ihn nicht. Es war immer sonnig.
 
-    Eines Tages klopfte ein kleines Mädchen an seine Tür.
+    Eines Tages klopfte ein kleines Mädchen an seine Tür."""
 
+    text2="""
     „Gehört der dir?“, fragte sie und hielt den Regenschirm hoch.
 
     „Nein“, sagte Daniel. „Er gehört demjenigen, der ihn braucht.“
 
-    Das Mädchen lächelte und nahm ihn.
+    Das Mädchen lächelte und nahm ihn."""
+
+    text3="""
 
     Am Nachmittag begann es zum ersten Mal seit Jahren zu regnen.
 
@@ -150,21 +168,39 @@ if __name__ == "__main__":
     persona = "Du bist ein entspannter Kollege."
 
     qdrant_url = "http://localhost:6333"
-    retrieval_controller = RetrievalController("Default_collection",qdrant_url=qdrant_url)
-    """
+    retrieval_controller = RetrievalController("Test_collection",qdrant_url=qdrant_url)
     retrieval_controller.update_chunk(
+        collection_name= "Test_collection",
         chunk_id= "Test_id1",
-        text= text,
-        role_access=["admin","user", "user2"],
+        text= text1,
+        role_access=["admin"],#,"user", "user2"
         source_id="Datensystem_1")
     retrieval_controller.update_chunk(
-            collection_name= "Default_collection",
-            chunk_id= "Test_id2",
-            text= text,
-            role_access=["admin","user", "user2"],
-            source_id="Datensystem_1")
-    resp= retrieval_controller.get_chunk_by_chunk_id("Default_collection","Test_id2")
-    print(resp)"""
+        collection_name= "Test_collection",
+        chunk_id= "Test_id2",
+        text= text2,
+        role_access=["admin"],
+        source_id="Datensystem_1")
+    retrieval_controller.update_chunk(
+        collection_name= "Test_collection",
+        chunk_id= "Test_id3",
+        text= text3,
+        role_access=["admin"],
+        source_id="Datensystem_1")
+    query= "Wem gehört der Regenschirm?"
+
+    
+    
+    search_criteria=SearchCriteria(source_ids=["Datensystem_1"] ,user_roles= ["admin"])
+    chunks = retrieval_controller.retrieve_chunks("Test_collection",query,search_criteria)
+    test = []
+    print(chunks)
+    for chunk in chunks:
+        print(chunk)
+        test.append(chunk[0].metadata["id"])
+    resp = retrieval_controller.user_query(query,"google/gemma-4-26B-A4B-it",chunks)
+    #resp= retrieval_controller.get_chunk_by_chunk_id("Default_collection","Test_id2")
+    print(resp)
     #from pydantic import BaseModel
     #class SearchCriteria(BaseModel):
     #    source_ids: list[str] = []
@@ -175,5 +211,5 @@ if __name__ == "__main__":
     #chunks =retrieval_controller.retrieve_chunks("Default_collection",text,search_criteria=search_criteria)
     #print(chunks)
 
-    answer=retrieval_controller.get_chunk_by_chunk_id("Default_collection",chunk_id="Test_id2")
-    print(answer.payload["page_content"], answer.payload["metadata"]["source_id"],answer.payload["metadata"]["role_access"])
+    #answer=retrieval_controller.get_chunk_by_chunk_id("Default_collection",chunk_id="Test_id2")
+    #print(answer.payload["page_content"], answer.payload["metadata"]["source_id"],answer.payload["metadata"]["role_access"])

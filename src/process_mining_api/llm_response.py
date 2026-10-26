@@ -73,7 +73,7 @@ class QueryHandler():
         retrieved_chunks = None
         if user_query.with_doc_search and user_query.search_criteria is not None:
             retrieved_chunks = self.__retriever_controller.retrieve_chunks(
-                collection = "Default_collection",
+                collection_name = "Test_collection",
                 query = user_query.query,
                 search_criteria= user_query.search_criteria,
                 documents = user_query.documents
@@ -84,7 +84,11 @@ class QueryHandler():
             persona = user_query.persona,
             retrieved_chunks= retrieved_chunks
         )
-        return response
+        ids = []
+        for chunk in retrieved_chunks:
+            ids.append(chunk[0].metadata["id"])
+            print(ids)
+        return [response, ids]
 
 if __name__ == "__main__":
     query_handler = QueryHandler()

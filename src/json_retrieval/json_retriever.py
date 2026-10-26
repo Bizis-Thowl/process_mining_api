@@ -125,9 +125,9 @@ class Retriever():
                 collection_name=name,
                 vectors_config=VectorParams(size=size, distance=Distance.COSINE),
             )
-            collection = self.qdr_client.get_collection(name)
+            #collection = self.qdr_client.get_collection(name)
             self.qdr_client.create_payload_index(
-                collection_name=collection.collection_name,
+                collection_name=name,
                 field_name="metadata.id",
                 field_schema=models.PayloadSchemaType.KEYWORD,
             )
@@ -140,38 +140,51 @@ class Retriever():
         )
         return self.vector_store
 
-    def retrieve_chunks(self, collection_name, query, source_ids, user_roles, limit:int = 20):
+    def retrieve_chunks(self, collection_name, query, source_ids:list[str], user_roles:list[str], limit:int = 20):
         
         if self.vector_store.collection_name != collection_name:
             self.set_vector_store(collection_name=collection_name)
-        filter = []
+        print(type(source_ids), source_ids)
+        print(type(user_roles), user_roles)
+        #filter = []
+        filter = models.Filter(
+            must=[
+                models.FieldCondition(
+                    key="metadata.source_id",
+                    match=models.MatchAny(any=source_ids),
+                ),
+                models.FieldCondition(
+                    key="metadata.role_access",
+                    match=models.MatchAny(any=user_roles),
+                ),
+            ]
+        )
+        """
         iterator = 0
-        for source in source_ids:
-            filter[iterator] = models.FieldCondition(
-                key="metadata.source_ids",
-                match=models.MatchValue(
-                    value=source,
-                ),
-            )
-            iterator +=1
+        #for source in source_ids:
+        filter.append(models.FieldCondition(
+            key="metadata.source_id",
+            match=models.MatchAny(
+                any=source_ids
+            ),
+        ))
+        #iterator +=1
 
-        for user_role in user_roles:
-            filter[iterator] = models.FieldCondition(
-                key="metadata.user_roles",
-                match=models.MatchValue(
-                    value=user_role,
-                ),
-            )
-            iterator +=1
+        #for user_role in user_roles:
+        filter.append(models.FieldCondition(
+            key="metadata.role_access",
+            match=models.MatchAny(
+                any=user_roles
+            ),
+        ))
+        #iterator +=1"""
 
         response =self.vector_store.similarity_search_with_score(
-            collection_name=collection_name,
+            #collection_name=collection_name,
             query=query,
-            query_filter=models.Filter(
-                must= filter
-            ),
+            filter=filter,
             search_params=models.SearchParams(hnsw_ef=128, exact=False),
-            limit=limit,
+            k=limit,
         )
         return response
 

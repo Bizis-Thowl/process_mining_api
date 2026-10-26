@@ -320,7 +320,7 @@ class QueryResponse(BaseModel):
     query_id: str
     session_id: int
     text: str
-    retrieved_chunks: list[Chunk] = None
+    retrieved_chunks: list[str] = None
 
 
 @app.post("/user_query", tags=["queries"])
@@ -338,8 +338,12 @@ def user_query(
         raise HTTPException(status_code=400, detail="The modelname is wrong")
     if user_query.persona is None:
         user_query.persona = "Du bis ein hilfsbereites Sprachmodell"
-    response = query_handler.test_persona(user_query.query, user_query.model, user_query.persona)
-    return {"query_id": "1234", "session_id": user_query.session_id, "text":response.answer,"retrieved_chunk_ids": ["1","2","3"]}
+    full_response = query_handler.user_query(user_query=user_query)
+    response = full_response[0]
+    chunk_ids= full_response[1]
+    print("Chunk_ids: ",chunk_ids)
+    #query_handler.test_persona(user_query.query, user_query.model, user_query.persona)
+    return {"query_id": "Dummy_id", "session_id": user_query.session_id, "text":response.model_dump_json(),"retrieved_chunks": chunk_ids}
 
 
 
