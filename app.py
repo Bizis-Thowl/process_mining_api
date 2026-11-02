@@ -7,7 +7,7 @@ import os
 from fastapi import Depends, FastAPI, Response, HTTPException, status
 #from fastapi import File, UploadFile
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, PlainTextResponse
 
 from jwt.exceptions import InvalidTokenError
 from pwdlib import PasswordHash
@@ -58,16 +58,22 @@ This API is part of the **KI-InnOMATiV** project and offers several functionalit
 | &#x2705; | /token | Done |
 | &#x2705; | /users/me/change_password | Done |
 | &#x2705; | /models | Done |
-| &#x2705; | PUT /chunks | Done |
-| &#x2705; | DELETE /chunks | Done |
-| &#x274c; | /user_query |In progress |
+| &#x2705; | PUT /chunks/\{chunk_id\} | Done |
+| &#x2705; | DELETE /chunks/\{chunk_id\} | Done |
+| &#x2705; | /user_query | Done |
+| &#x2705; | GET /chunks/\{chunk_id\} | Done |
+| &#x274c; | GET /chunks |In progress |
+| &#x274c; | DELETE /chunks |In progress |
+| &#x274c; | GET /chunks/batch |In progress |
+| &#x274c; | DELETE /chunks/batch |In progress |
+
 
 </details>
 """
 
 # FastAPI App initialisieren
 app = FastAPI(title="KI-InnOMATiV LLM API",
-        version="0.3.0",
+        version="0.4.0",
         description=description,
         openapi_tags=tags_metadata)
 
@@ -80,6 +86,13 @@ query_handler = QueryHandler()
 @app.get("/", include_in_schema=False)
 async def docs_redirect():
     return RedirectResponse(url='/docs')
+
+##################################
+# RESPONSES
+##################################
+
+#def responses(*code: int, **description: str):
+#    return {code: {"description": description}}
 
 
 ###################################
@@ -197,20 +210,7 @@ async def login_for_access_token(
     )
     return Token(access_token=access_token, token_type="bearer")
 
-"""
-@app.get("/users/me/")
-async def read_users_me(
-    current_user: Annotated[User, Depends(get_current_active_user)],
-) -> User:
-    return current_user
 
-
-@app.get("/users/me/items/")
-async def read_own_items(
-    current_user: Annotated[User, Depends(get_current_active_user)],
-):
-    return [{"item_id": "Foo", "owner": current_user.username}]
-"""
     
 @app.post("/users/me/change_password/", tags=["users"])
 async def change_password(
@@ -234,62 +234,14 @@ async def change_password(
       
 
 """
-async def change_password(
-    current_user: Annotated[User, Depends(get_current_active_user)], old_password: str, new_password: str, new_password_repeat: str):
-    authenticate_user(user_db, current_user["username"], old_password)
-    new_hash = get_password_hash(new_password)
-    new_hash_rep = get_password_hash(new_password_repeat)
-    if new_hash != new_hash_rep:
-        raise HTTPException(status_code=400, detail="New passwords do not match")
-    else:
-        user_db[current_user["username"]]["hashed_password"] = new_hash
-        user_manager.update_user_db(user_db)"""
-        
-
-# Logic for answering queries
-
-# Request-Body
 class Item(BaseModel):
     name: str
     price: float
-    in_stock: bool = True
+    in_stock: bool = True"""
 
-###################################
-# Queries
-###################################
-"""
-@app.get("/query")
-async def get_query(query: str, current_user: Annotated[User, Depends(get_current_active_user)]):
-    response = query_handler.simple_query(query)
-    return {"query": query, "response": response}
-
-@app.get("/question")
-def get_answer(query: str, current_user: Annotated[User, Depends(get_current_active_user)]):
-    response = query_handler.simple_question(query)
-    return {"query": query, "response": response}
-
-@app.get("/change_tracing_id")
-def change_tracing_id(tracing_id: str, current_user: Annotated[User, Depends(get_current_active_user)]):
-    query_handler.set_tracing_id(tracing_id)
-    return {"message": f"Tracing ID changed to {tracing_id}"}
-
-@app.get("/test")
-def test_model(query: str, current_user: Annotated[User, Depends(get_current_active_user)], model:str = "Qwen/Qwen3.6-27B-FP8"):
-    response = query_handler.test_model(query, model)
-    return {"query": query, "response": response}
-
-@app.get("/test_persona")
-def test_persona_with_model(query: str, persona: str, current_user: Annotated[User, Depends(get_current_active_user)], model:str = "Qwen/Qwen3.6-27B-FP8"):
-    response = query_handler.test_persona(query, model, persona)
-    return {"query": query, "persona": persona, "response": response}
-
-@app.get("/init_embeddings")
-def init_embeddings(current_user: Annotated[User, Depends(get_current_active_user)]):
-    query_handler.init_embeddings()
-    return {"message": "Embeddings initialized successfully."}
-"""
-
-# Functions for test_system
+#################################
+# CLASSES
+#################################
 
 class Document(BaseModel):
     doc_id: int
@@ -310,7 +262,9 @@ class UserQuery(BaseModel):
     tracing_id:str = None
 
 class Chunk(BaseModel):
-    #chunk_id: str
+    """
+    Contains all the information for a chunk. Does not contain a Chunk-id.
+    """
     text: str
     role_access: list[str]
     source_id: str = None
@@ -321,6 +275,25 @@ class QueryResponse(BaseModel):
     session_id: int
     text: str
     retrieved_chunks: list[str] = None
+
+class CompleteChunk(BaseModel):
+    """
+    Contains a Chunk and Chunk-id
+    """
+    chunk_id: str
+    chunk: Chunk
+
+class Model(BaseModel):
+    name: str 
+    description: str
+    max_input_tokens: int
+    max_output_tokens: int
+    multimodal: bool
+    additional_info: str
+
+#################################
+# QUERIES
+#################################
 
 
 @app.post("/user_query", tags=["queries"])
@@ -347,7 +320,42 @@ def user_query(
 
 
 
-@app.put("/chunks/{chunk_id}", tags=["chunks"],status_code=status.HTTP_201_CREATED)
+#################################
+# CHUNKS
+#################################
+
+@app.get("/chunks", tags=["chunks"], summary="Get chunks",
+         description="Gets the chunks whose source ID matches an entry of `source_ids`, or all chunks if absent. The entries contain no text.",
+         response_description="The matching chunks; empty if none match.",
+            responses={200: {"description": "Returns list of complete chunks"}, 404: {"description": "Source_id(s) not found"}})
+async def get_chunks(source_ids: list[str], current_user: Annotated[User, Depends(get_current_active_user)]) -> list[CompleteChunk]:
+    pass
+
+
+@app.delete("/chunks", tags=["chunks"], operation_id="deleteChunks", summary="Delete chunks",
+            description="Deletes the chunks whose source ID matches an entry of `source_ids`, or all chunks if absent.",
+            responses={200: {"description": "Successfully deleted"}, 404: {"description": "Source_id(s) not found"}})
+async def delete_chunks(source_ids: list[str], current_user: Annotated[User, Depends(get_current_active_user)]) -> PlainTextResponse:
+    pass
+
+@app.post("/chunks/batch", tags=["chunks"], summary="Store chunks",
+          description="Creates each chunk of the list or replaces it completely. All or nothing: if one entry is invalid or a `chunk_id` occurs twice, no chunk is stored.",
+            responses={200: {"description": "Chunks successfully updated!"}, 201: {"description": "Chunks successfully created!"},
+                       400: {"description": "Bad request"}})
+async def update_chunks(chunks: list[CompleteChunk], current_user: Annotated[User, Depends(get_current_active_user)]) -> PlainTextResponse:
+    return "This method is not implemented yet"
+ 
+ 
+@app.delete("/chunks/batch", tags=["chunks"], operation_id="deleteChunksById", summary="Delete chunks",
+            description="Deletes each existing chunk of the list. Unknown IDs are skipped.",
+            responses={200: {"description": "Successfully deleted"}, 404: {"description": "Chunk_id(s) not found"}})
+async def batch_delete_chunks(chunk_ids: list[str], current_user: Annotated[User, Depends(get_current_active_user)]) -> PlainTextResponse:
+    return PlainTextResponse(content= "This method is not implemented yet",status_code=418)
+
+
+@app.put("/chunks/{chunk_id}", tags=["chunks"],status_code=status.HTTP_201_CREATED,
+            responses={200: {"description": "Chunk with the id [chunk_id] successfully updated!"}, 201: {"description": "Chunk with the id [chunk_id] successfully created!"},
+                       500: {"description": "Internal server error"}})
 def update_chunk(chunk_id, chunk:Chunk, current_user: Annotated[User, Depends(get_current_active_user)], response: Response):
     try:
         was_updated = query_handler.update_chunk(chunk_id, chunk)
@@ -360,16 +368,13 @@ def update_chunk(chunk_id, chunk:Chunk, current_user: Annotated[User, Depends(ge
         return "Chunk with the id "+chunk_id+" successfully created!"
 
 
-class ChunkResponse(BaseModel):
-    chunk_id: str
-    chunk: Chunk
-
-@app.get("/chunks/{chunk_id}", tags=["chunks"])
+@app.get("/chunks/{chunk_id}", tags=["chunks"],
+        responses={200: {"description": "Returns complete chunk"}, 404: {"description": "Chunk_id not found"}})
 def get_chunk(
     chunk_id:str,
     current_user: Annotated[User, Depends(get_current_active_user)],
     collection_name: str = "Default_collection" 
-    )-> ChunkResponse:
+    )-> CompleteChunk:
     response = query_handler.get_chunk(collection_name=collection_name, chunk_id=chunk_id)
     if response is None:
             raise HTTPException(status_code=404, detail="Chunk not found.")
@@ -381,20 +386,19 @@ def get_chunk(
 
 
 
-@app.delete("/chunks/{chunk_id}", tags=["chunks"])
+@app.delete("/chunks/{chunk_id}", tags=["chunks"],
+            responses={200: {"description": "Successfully deleted"}, 404: {"description": "Chunk_id not found"}})
 def delete_chunk(chunk_id:str, current_user: Annotated[User, Depends(get_current_active_user)]):
     was_deleted = query_handler.delete_chunk(chunk_id)
     if was_deleted is False:
         raise HTTPException(status_code=404, detail="Chunk not found.")
     return "Chunk with the id "+chunk_id+" successfully deleted!"
 
-class Model(BaseModel):
-    name: str 
-    description: str
-    max_input_tokens: int
-    max_output_tokens: int
-    multimodal: bool
-    additional_info: str
+
+#################################
+# MODELS
+#################################
+
 
 @app.get("/models", tags=["models"])
 async def models(
@@ -402,5 +406,4 @@ async def models(
     )-> list[Model]:
     models = query_handler.get_models()
     return models
-    #return {"description": "This would contain a list of models."}
 
