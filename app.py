@@ -69,11 +69,21 @@ This API is part of the **KI-InnOMATiV** project and offers several functionalit
 
 
 </details>
+
+<details>
+<summary>Changelog</summary>
+
+------------------------------------
+0.4.1 - 05.11.2026
+------------------------------------
+- Deleted collection_name from Chunk and GET chunks/\{chunk_id}
+
+</details>
 """
 
 # FastAPI App initialisieren
 app = FastAPI(title="KI-InnOMATiV LLM API",
-        version="0.4.0",
+        version="0.4.1",
         description=description,
         openapi_tags=tags_metadata)
 
@@ -268,7 +278,7 @@ class Chunk(BaseModel):
     text: str
     role_access: list[str]
     source_id: str = None
-    collection_name: str = "Default_collection"
+    #collection_name: str = "Default_collection"
 
 class QueryResponse(BaseModel):
     query_id: str
@@ -372,17 +382,16 @@ def update_chunk(chunk_id, chunk:Chunk, current_user: Annotated[User, Depends(ge
         responses={200: {"description": "Returns complete chunk"}, 404: {"description": "Chunk_id not found"}})
 def get_chunk(
     chunk_id:str,
-    current_user: Annotated[User, Depends(get_current_active_user)],
-    collection_name: str = "Default_collection" 
+    current_user: Annotated[User, Depends(get_current_active_user)] 
     )-> CompleteChunk:
-    response = query_handler.get_chunk(collection_name=collection_name, chunk_id=chunk_id)
+    response = query_handler.get_chunk( chunk_id=chunk_id) #collection_name=collection_name,
     if response is None:
             raise HTTPException(status_code=404, detail="Chunk not found.")
     text = response.payload["page_content"]
     role_access = response.payload["metadata"]["role_access"]
     source_id = response.payload["metadata"]["source_id"]
-    collection_name = collection_name
-    return {"chunk_id": chunk_id, "chunk": {"text":text,"role_access":role_access,"source_id":source_id,"collection_name":collection_name}}
+    #collection_name = collection_name
+    return {"chunk_id": chunk_id, "chunk": {"text":text,"role_access":role_access,"source_id":source_id}} #"collection_name":collection_name}
 
 
 

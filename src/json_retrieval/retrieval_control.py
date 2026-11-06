@@ -98,6 +98,9 @@ class RetrievalController:
         self.retriever.embed(collection_name, chunk_id,text,role_access,source_id)
         return was_updated
 
+    def get_collections(self):
+        return self.retriever.get_collections()
+
 
     def get_chunk_by_chunk_id(self, collection_name: str, chunk_id: str):
         return self.retriever.get_chunk_by_chunk_id(collection_name,chunk_id)
@@ -201,6 +204,8 @@ if __name__ == "__main__":
     resp = retrieval_controller.user_query(query,"google/gemma-4-26B-A4B-it",chunks)
     #resp= retrieval_controller.get_chunk_by_chunk_id("Default_collection","Test_id2")
     print(resp)
+
+    print(retrieval_controller.get_collections().collections[0].name)
     #from pydantic import BaseModel
     #class SearchCriteria(BaseModel):
     #    source_ids: list[str] = []

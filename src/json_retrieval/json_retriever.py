@@ -20,7 +20,7 @@ class Retriever():
     def __init__(self, vector_store_name = None, qdrant_url :str = None, vec_dim: int = 4096):
 
         if vector_store_name is None:
-            vector_store_name = os.getenv("VECTOR_STORE_NAME")
+            self.vector_store_name = os.getenv("VECTOR_STORE_NAME")
         else:
             self.vector_store_name = vector_store_name
         #self.tracer = init_phoenix("json_retriever")
@@ -37,6 +37,7 @@ class Retriever():
             self.qdr_client = QdrantClient(url = qdrant_url)
         else:
             self.qdr_client = QdrantClient(path=os.getenv("PROJECT_DIR")+"/json_retrieval/local_data/embeddings")
+        
         self.create_collection(vector_store_name, vec_dim)
 
         self.init_embeddings()
@@ -60,19 +61,22 @@ class Retriever():
         if was_successfull is not True:
             print("Embeddings not initialized. Cannot initialize vector store.")
         else:
-            try:
-                self.vector_store = QdrantVectorStore(
-                    client=self.qdr_client,
-                    collection_name=self.vector_store_name,
-                    embedding=self.embeddings
-                )
-                self.embedder = Embedder(self.qdr_client,self.vector_store,self.embeddings)
-            except Exception as e:
-                print(e)
-                print("Vector store not initialized. Cannot initialize vector store.")
-                was_successfull = False
+            #try:
+            self.vector_store = QdrantVectorStore(
+                client=self.qdr_client,
+                collection_name=self.vector_store_name,
+                embedding=self.embeddings
+            )
+            self.embedder = Embedder(self.qdr_client,self.vector_store,self.embeddings)
+            #except Exception as e:
+                #print(e)
+                #print("Vector store not initialized. Cannot initialize vector store.")
+                #was_successfull = False
 
-        return was_successfull           
+        return was_successfull    
+
+    def get_collections(self):
+        return self.qdr_client.get_collections()
     
     def retrieve(self, query, num_results=4):
         #query_emb = self.embedder.get_embedding(query,os.getenv("EMB_MODEL"))
@@ -234,11 +238,6 @@ class JSONChunker:
     def return_chunk(self, uuid):
         return self.chunks[uuid]
 """
-
-
-   
-
-    
 
 
 

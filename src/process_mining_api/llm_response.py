@@ -36,7 +36,7 @@ class QueryHandler():
 
     def update_chunk(self,chunk_id, chunk):
         response = self.__retriever_controller.update_chunk(
-            collection_name = chunk.collection_name,
+            collection_name = chunk.source_id,
             chunk_id = chunk_id,
             text= chunk.text,
             role_access = chunk.role_access,
@@ -65,8 +65,13 @@ class QueryHandler():
                             "additional_info": m["additional_info"]})
         return response
 
-    def get_chunk(self, collection_name, chunk_id):
-        response = self.__retriever_controller.get_chunk_by_chunk_id(collection_name=collection_name,chunk_id=chunk_id)
+    def get_chunk(self,  chunk_id): #collection_name,
+        collection_names = self.__retriever_controller.get_collections().collections
+        for collection in collection_names:
+            response = self.__retriever_controller.get_chunk_by_chunk_id(collection_name=collection.name,chunk_id=chunk_id)
+            if response is not None:
+                return response
+            #print(f"searching collection {collection.name}")
         return response
 
     def user_query(self, user_query):
