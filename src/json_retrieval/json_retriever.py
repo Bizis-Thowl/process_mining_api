@@ -85,12 +85,12 @@ class Retriever():
     """
     def retrieve_chunk(self, uuid):
         return self.chunker.return_chunk(uuid)
-    """
+        
     def embed_json(self,json_data):
         chunks = self.chunker.chunk_json(json_data)
         #self.create_collection(self.vector_store_name, vec_dim)
         embedding = self.embedder.create_json_embedding(chunks)
-
+    """
     def embed(self, collection_name:str, chunk_id: str, text: str, role_access: list[str], source_id: str = None):
         response = self.embedder.create_embedding(collection_name, chunk_id,text,role_access,source_id)
 
@@ -118,6 +118,21 @@ class Retriever():
         chunk = self.get_chunk_by_chunk_id(collection_name=collection_name,chunk_id=chunk_id)
         if chunk is not None:
             self.qdr_client.delete(collection_name=collection_name, points_selector=[chunk.id])
+            return True
+        else:
+            return False
+
+    def delete_sources(self, source_ids: list[str]):
+        deletions = 0
+        for id in source_ids:
+            was_deleted= self.delete_source(source_id=id)
+            if was_deleted:
+                deletions += 1
+        return deletions
+
+    def delete_source(self, source_id: str):
+        if self.qdr_client.collection_exists(collection_name=source_id):
+            self.qdr_client.delete_collection(collection_name=source_id)
             return True
         else:
             return False

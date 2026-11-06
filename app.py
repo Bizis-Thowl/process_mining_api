@@ -63,6 +63,7 @@ This API is part of the **KI-InnOMATiV** project and offers several functionalit
 | &#x2705; | /user_query | Done |
 | &#x2705; | GET /chunks/\{chunk_id\} | Done |
 | &#x274c; | GET /chunks |In progress |
+| &#x274c; | POST /chunks/batch | In progress |
 | &#x274c; | DELETE /chunks |In progress |
 | &#x274c; | GET /chunks/batch |In progress |
 | &#x274c; | DELETE /chunks/batch |In progress |
@@ -78,12 +79,18 @@ This API is part of the **KI-InnOMATiV** project and offers several functionalit
 ------------------------------------
 - Deleted collection_name from Chunk and GET chunks/\{chunk_id}
 
+------------------------------------
+0.4.2 - 11.2026
+------------------------------------
+- Added POST chunks/batch (batch_update) functionality
+- Added DELETE /chunks functionality
+
 </details>
 """
 
 # FastAPI App initialisieren
 app = FastAPI(title="KI-InnOMATiV LLM API",
-        version="0.4.1",
+        version="0.4.2",
         description=description,
         openapi_tags=tags_metadata)
 
@@ -341,19 +348,31 @@ def user_query(
 async def get_chunks(source_ids: list[str], current_user: Annotated[User, Depends(get_current_active_user)]) -> list[CompleteChunk]:
     pass
 
-
 @app.delete("/chunks", tags=["chunks"], operation_id="deleteChunks", summary="Delete chunks",
             description="Deletes the chunks whose source ID matches an entry of `source_ids`, or all chunks if absent.",
-            responses={200: {"description": "Successfully deleted"}, 404: {"description": "Source_id(s) not found"}})
+            responses={200: {"description": "Successfully deleted chunks for X source_id(s)"}, 404: {"description": "Source_id(s) not found"}})
 async def delete_chunks(source_ids: list[str], current_user: Annotated[User, Depends(get_current_active_user)]) -> PlainTextResponse:
-    pass
+    deletions = query_handler.delete_sources(source_ids)
+    if deletions == 0:
+        raise HTTPException(status_code=404, detail="Source_id(s) not found")
+    else:
+        return f"Successfully deleted chunks for {deletions} source_id(s)"
+
 
 @app.post("/chunks/batch", tags=["chunks"], summary="Store chunks",
           description="Creates each chunk of the list or replaces it completely. All or nothing: if one entry is invalid or a `chunk_id` occurs twice, no chunk is stored.",
             responses={200: {"description": "Chunks successfully updated!"}, 201: {"description": "Chunks successfully created!"},
                        400: {"description": "Bad request"}})
-async def update_chunks(chunks: list[CompleteChunk], current_user: Annotated[User, Depends(get_current_active_user)]) -> PlainTextResponse:
-    return "This method is not implemented yet"
+async def update_chunks(chunks: list[CompleteChunk], current_user: Annotated[User, Depends(get_current_active_user)], response: Response) -> PlainTextResponse:
+    try:
+        was_updated = query_handler.batch_update_chunks(chunks)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    if was_updated:
+        response.status_code = status.HTTP_200_OK
+        return "Chunks successfully updated!"
+    else:    
+        return "Chunks successfully created!"
  
  
 @app.delete("/chunks/batch", tags=["chunks"], operation_id="deleteChunksById", summary="Delete chunks",

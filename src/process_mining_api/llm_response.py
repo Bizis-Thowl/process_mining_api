@@ -35,19 +35,35 @@ class QueryHandler():
         return response
 
     def update_chunk(self,chunk_id, chunk):
-        response = self.__retriever_controller.update_chunk(
+        was_updated = self.__retriever_controller.update_chunk(
             collection_name = chunk.source_id,
             chunk_id = chunk_id,
             text= chunk.text,
             role_access = chunk.role_access,
             source_id = chunk.source_id)
-        return response
+        return was_updated
+
+    def batch_update_chunks(self, chunks):
+        response = False
+        for c in chunks:
+            was_updated = self.update_chunk(chunk_id=c.chunk_id,chunk=c.chunk)
+            if was_updated:
+                response = was_updated
+        # If one chunk was updated, the response for "was_updated" is True
+        if response:
+            return response
+        else:
+            return False
 
     def delete_chunk(self, chunk_id):
-        response = self.__retriever_controller.delete_chunk(
+        was_deleted = self.__retriever_controller.delete_chunk(
             collection_name="Default_collection",
             chunk_id=chunk_id)
-        return response
+        return was_deleted
+
+    def delete_sources(self, source_ids: list[str]):
+        deletions = self.__retriever_controller.delete_sources(source_ids)
+        return deletions
 
     def get_models(self):
         models = self.__retriever_controller.get_models()

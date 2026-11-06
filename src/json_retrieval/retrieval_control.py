@@ -108,6 +108,9 @@ class RetrievalController:
     def delete_chunk(self, collection_name: str, chunk_id: str):
         return self.retriever.delete_chunk(collection_name=collection_name,chunk_id=chunk_id)
 
+    def delete_sources(self, source_ids: list[str]):
+        return self.retriever.delete_sources(source_ids=source_ids)
+
 
 
 def embedding_creation(vec_dim: int):
