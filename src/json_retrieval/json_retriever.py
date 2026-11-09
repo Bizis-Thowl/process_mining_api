@@ -85,7 +85,7 @@ class Retriever():
     """
     def retrieve_chunk(self, uuid):
         return self.chunker.return_chunk(uuid)
-        
+
     def embed_json(self,json_data):
         chunks = self.chunker.chunk_json(json_data)
         #self.create_collection(self.vector_store_name, vec_dim)
@@ -113,6 +113,15 @@ class Retriever():
             return chunk[0][0]
         else:
             return None
+
+    def get_sources(self, source_ids: list[str]):
+        sources = {}
+        for id in source_ids:
+            chunks = self.qdr_client.scroll(
+                collection_name=id
+            )
+            sources[id] = chunks
+        return sources
 
     def delete_chunk(self,collection_name:str, chunk_id: str):
         chunk = self.get_chunk_by_chunk_id(collection_name=collection_name,chunk_id=chunk_id)

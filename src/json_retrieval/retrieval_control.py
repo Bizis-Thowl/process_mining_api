@@ -105,6 +105,9 @@ class RetrievalController:
     def get_chunk_by_chunk_id(self, collection_name: str, chunk_id: str):
         return self.retriever.get_chunk_by_chunk_id(collection_name,chunk_id)
 
+    def get_sources(self, source_ids: list[str]):
+        return self.retriever.get_sources(source_ids=source_ids)
+
     def delete_chunk(self, collection_name: str, chunk_id: str):
         return self.retriever.delete_chunk(collection_name=collection_name,chunk_id=chunk_id)
 

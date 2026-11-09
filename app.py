@@ -77,13 +77,14 @@ This API is part of the **KI-InnOMATiV** project and offers several functionalit
 ------------------------------------
 0.4.1 - 05.11.2026
 ------------------------------------
-- Deleted collection_name from Chunk and GET chunks/\{chunk_id}
+- Deleted collection_name from Chunk and GET chunks\/\{chunk_id}
 
 ------------------------------------
-0.4.2 - 11.2026
+0.4.2 - 09.11.2026
 ------------------------------------
-- Added POST chunks/batch (batch_update) functionality
-- Added DELETE /chunks functionality
+- Added POST chunks\/batch (batch_update) functionality
+- Added DELETE \/chunks functionality
+
 
 </details>
 """
@@ -346,7 +347,8 @@ def user_query(
          response_description="The matching chunks; empty if none match.",
             responses={200: {"description": "Returns list of complete chunks"}, 404: {"description": "Source_id(s) not found"}})
 async def get_chunks(source_ids: list[str], current_user: Annotated[User, Depends(get_current_active_user)]) -> list[CompleteChunk]:
-    pass
+    #chunks = query_handler.get_sources(source_ids)
+    return "This method is not implemented yet"#chunks
 
 @app.delete("/chunks", tags=["chunks"], operation_id="deleteChunks", summary="Delete chunks",
             description="Deletes the chunks whose source ID matches an entry of `source_ids`, or all chunks if absent.",

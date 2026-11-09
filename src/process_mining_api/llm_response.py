@@ -90,6 +90,9 @@ class QueryHandler():
             #print(f"searching collection {collection.name}")
         return response
 
+    def get_sources(self, source_ids: list[str]):
+        return self.__retriever_controller.get_sources(source_ids=source_ids)
+
     def user_query(self, user_query):
         retrieved_chunks = None
         if user_query.with_doc_search and user_query.search_criteria is not None:
