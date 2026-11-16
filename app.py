@@ -63,10 +63,10 @@ This API is part of the **KI-InnOMATiV** project and offers several functionalit
 | &#x2705; | /user_query | Done |
 | &#x2705; | GET /chunks/\{chunk_id\} | Done |
 | &#x274c; | GET /chunks |In progress |
-| &#x274c; | POST /chunks/batch | In progress |
-| &#x274c; | DELETE /chunks |In progress |
+| &#x2705; | POST /chunks/batch | In progress |
+| &#x2705; | DELETE /chunks |In progress |
 | &#x274c; | GET /chunks/batch |In progress |
-| &#x274c; | DELETE /chunks/batch |In progress |
+| &#x2705; | DELETE /chunks/batch |In progress |
 
 
 </details>
