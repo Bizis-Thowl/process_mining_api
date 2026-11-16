@@ -75,15 +75,16 @@ This API is part of the **KI-InnOMATiV** project and offers several functionalit
 <summary>Changelog</summary>
 
 ------------------------------------
-0.4.1 - 05.11.2026
+0.4.1 - 11.2026
 ------------------------------------
 - Deleted collection_name from Chunk and GET chunks\/\{chunk_id}
 
 ------------------------------------
-0.4.2 - 09.11.2026
+0.4.2 - 11.2026
 ------------------------------------
 - Added POST chunks\/batch (batch_update) functionality
 - Added DELETE \/chunks functionality
+- Added DELETE \/chunks\/batch functionality
 
 
 </details>
@@ -381,7 +382,10 @@ async def update_chunks(chunks: list[CompleteChunk], current_user: Annotated[Use
             description="Deletes each existing chunk of the list. Unknown IDs are skipped.",
             responses={200: {"description": "Successfully deleted"}, 404: {"description": "Chunk_id(s) not found"}})
 async def batch_delete_chunks(chunk_ids: list[str], current_user: Annotated[User, Depends(get_current_active_user)]) -> PlainTextResponse:
-    return PlainTextResponse(content= "This method is not implemented yet",status_code=418)
+    response = query_handler.batch_delete_chunks(chunk_ids)
+    if response == []:
+        raise HTTPException(status_code=404, detail="No chunks found!")
+    return f"The following hhunks were successfully deleted{response}"
 
 
 @app.put("/chunks/{chunk_id}", tags=["chunks"],status_code=status.HTTP_201_CREATED,

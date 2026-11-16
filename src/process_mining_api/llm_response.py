@@ -56,13 +56,26 @@ class QueryHandler():
             return False
 
     def delete_chunk(self, chunk_id):
-        was_deleted = self.__retriever_controller.delete_chunk(
-            collection_name="Default_collection",
-            chunk_id=chunk_id)
+        chunk = self.get_chunk(chunk_id=chunk_id)
+        was_deleted = False
+        if chunk is not None:
+            source_id = chunk.payload["metadata"]["source_id"]
+            was_deleted = self.__retriever_controller.delete_chunk(
+                collection_name=source_id,
+                chunk_id=chunk_id)
         return was_deleted
+        
 
     def delete_sources(self, source_ids: list[str]):
         deletions = self.__retriever_controller.delete_sources(source_ids)
+        return deletions
+
+    def batch_delete_chunks(self, chunk_ids):
+        deletions = []
+        for id in chunk_ids:
+            deletion = self.delete_chunk(chunk_id = id)
+            if deletion:
+                deletions.append(id)
         return deletions
 
     def get_models(self):
