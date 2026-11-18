@@ -4,7 +4,7 @@ from typing import Annotated
 import jwt
 import os
 
-from fastapi import Depends, FastAPI, Response, HTTPException, status
+from fastapi import Depends, FastAPI, Response, HTTPException, status, Query
 #from fastapi import File, UploadFile
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.responses import RedirectResponse, PlainTextResponse
@@ -62,11 +62,11 @@ This API is part of the **KI-InnOMATiV** project and offers several functionalit
 | &#x2705; | DELETE /chunks/\{chunk_id\} | Done |
 | &#x2705; | /user_query | Done |
 | &#x2705; | GET /chunks/\{chunk_id\} | Done |
-| &#x274c; | GET /chunks |In progress |
-| &#x2705; | POST /chunks/batch | In progress |
-| &#x2705; | DELETE /chunks |In progress |
-| &#x274c; | GET /chunks/batch |In progress |
-| &#x2705; | DELETE /chunks/batch |In progress |
+| &#x2705; | GET /chunks | Done |
+| &#x2705; | POST /chunks/batch | Done |
+| &#x2705; | DELETE /chunks | Done |
+| &#x2705; | GET /chunks/batch | Done |
+| &#x2705; | DELETE /chunks/batch | Done |
 
 
 </details>
@@ -77,7 +77,7 @@ This API is part of the **KI-InnOMATiV** project and offers several functionalit
 ------------------------------------
 0.4.1 - 11.2026
 ------------------------------------
-- Deleted collection_name from Chunk and GET chunks\/\{chunk_id}
+- Deleted collection_name from Chunk and GET chunks\/\{chunk_id\}
 
 ------------------------------------
 0.4.2 - 11.2026
@@ -86,13 +86,18 @@ This API is part of the **KI-InnOMATiV** project and offers several functionalit
 - Added DELETE \/chunks functionality
 - Added DELETE \/chunks\/batch functionality
 
+------------------------------------
+0.4.3 - 11.2026
+------------------------------------
+- Added GET chunks\/\{chunk_id\} functionality
+- Added GET chunks\/ functionality
 
 </details>
 """
 
 # FastAPI App initialisieren
 app = FastAPI(title="KI-InnOMATiV LLM API",
-        version="0.4.2",
+        version="0.4.3",
         description=description,
         openapi_tags=tags_metadata)
 
@@ -310,6 +315,10 @@ class Model(BaseModel):
     multimodal: bool
     additional_info: str
 
+class ChunkFilter(BaseModel):
+    limit: int = 10
+    source_id: list[str] = []
+
 #################################
 # QUERIES
 #################################
@@ -347,9 +356,28 @@ def user_query(
          description="Gets the chunks whose source ID matches an entry of `source_ids`, or all chunks if absent. The entries contain no text.",
          response_description="The matching chunks; empty if none match.",
             responses={200: {"description": "Returns list of complete chunks"}, 404: {"description": "Source_id(s) not found"}})
-async def get_chunks(source_ids: list[str], current_user: Annotated[User, Depends(get_current_active_user)]) -> list[CompleteChunk]:
-    #chunks = query_handler.get_sources(source_ids)
-    return "This method is not implemented yet"#chunks
+def get_chunks(query_filter:Annotated[ChunkFilter, Query()], current_user: Annotated[User, Depends(get_current_active_user)]) -> list[CompleteChunk]:
+    chunks = query_handler.get_sources(source_ids = query_filter.source_id, limit= query_filter.limit)
+    if chunks is None:
+        raise HTTPException(status_code=404, detail="Source_id(s) not found!")
+    if chunks == {}:
+        raise HTTPException(status_code=404, detail="No chunks found.")
+    response = []
+    for id in query_filter.source_id:
+        if id in chunks:
+            for chunk in chunks[id][0]:
+                if chunk is not None:
+                    comp_chunk = CompleteChunk(
+                        chunk_id= chunk.payload["metadata"]["id"],
+                        chunk = Chunk(
+                            text = chunk.payload["page_content"],
+                            role_access= chunk.payload["metadata"]["role_access"],
+                            source_id=id
+                        )
+                    )
+                    response.append(comp_chunk)        
+    return response 
+
 
 @app.delete("/chunks", tags=["chunks"], operation_id="deleteChunks", summary="Delete chunks",
             description="Deletes the chunks whose source ID matches an entry of `source_ids`, or all chunks if absent.",
@@ -385,7 +413,7 @@ async def batch_delete_chunks(chunk_ids: list[str], current_user: Annotated[User
     response = query_handler.batch_delete_chunks(chunk_ids)
     if response == []:
         raise HTTPException(status_code=404, detail="No chunks found!")
-    return f"The following hhunks were successfully deleted{response}"
+    return f"The following chunks were successfully deleted: {response}"
 
 
 @app.put("/chunks/{chunk_id}", tags=["chunks"],status_code=status.HTTP_201_CREATED,
@@ -412,11 +440,19 @@ def get_chunk(
     response = query_handler.get_chunk( chunk_id=chunk_id) #collection_name=collection_name,
     if response is None:
             raise HTTPException(status_code=404, detail="Chunk not found.")
-    text = response.payload["page_content"]
-    role_access = response.payload["metadata"]["role_access"]
-    source_id = response.payload["metadata"]["source_id"]
+    comp_chunk = CompleteChunk(
+        chunk_id= response.payload["metadata"]["id"],
+        chunk = Chunk(
+            text = response.payload["page_content"],
+            role_access= response.payload["metadata"]["role_access"],
+            source_id= response.payload["metadata"]["source_id"]
+        )
+    )
+    #text = response.payload["page_content"]
+    #role_access = response.payload["metadata"]["role_access"]
+    #source_id = response.payload["metadata"]["source_id"]
     #collection_name = collection_name
-    return {"chunk_id": chunk_id, "chunk": {"text":text,"role_access":role_access,"source_id":source_id}} #"collection_name":collection_name}
+    return comp_chunk # {"chunk_id": chunk_id, "chunk": {"text":text,"role_access":role_access,"source_id":source_id}} #"collection_name":collection_name}
 
 
 

@@ -8,6 +8,9 @@ from langchain_text_splitters import RecursiveJsonSplitter
 from langchain_qdrant import QdrantVectorStore
 from qdrant_client import QdrantClient, models
 from qdrant_client.http.models import Distance, VectorParams
+
+from qdrant_client.http.exceptions import UnexpectedResponse
+
 from langchain_ollama import OllamaEmbeddings
 from langchain_openai import OpenAIEmbeddings
 
@@ -114,13 +117,18 @@ class Retriever():
         else:
             return None
 
-    def get_sources(self, source_ids: list[str]):
+    def get_sources(self, source_ids: list[str], limit:int):
         sources = {}
         for id in source_ids:
-            chunks = self.qdr_client.scroll(
-                collection_name=id
-            )
+            try:
+                chunks = self.qdr_client.scroll(
+                    collection_name=id
+                )
+            except UnexpectedResponse:
+                return None
             sources[id] = chunks
+            if len(sources)+1 ==limit:
+                return sources 
         return sources
 
     def delete_chunk(self,collection_name:str, chunk_id: str):

@@ -105,8 +105,8 @@ class RetrievalController:
     def get_chunk_by_chunk_id(self, collection_name: str, chunk_id: str):
         return self.retriever.get_chunk_by_chunk_id(collection_name,chunk_id)
 
-    def get_sources(self, source_ids: list[str]):
-        return self.retriever.get_sources(source_ids=source_ids)
+    def get_sources(self, source_ids: list[str], limit: int):
+        return self.retriever.get_sources(source_ids=source_ids, limit=limit)
 
     def delete_chunk(self, collection_name: str, chunk_id: str):
         return self.retriever.delete_chunk(collection_name=collection_name,chunk_id=chunk_id)
@@ -176,8 +176,20 @@ if __name__ == "__main__":
     """
     persona = "Du bist ein entspannter Kollege."
 
+
+
+
     qdrant_url = "http://localhost:6333"
     retrieval_controller = RetrievalController("Test_collection",qdrant_url=qdrant_url)
+    print(retrieval_controller.get_sources(["string"],10)["string"][0][0].payload)
+    chunks = retrieval_controller.get_sources(["string"],10)
+    print(chunks["string"][0])
+    if "string" in chunks:
+        for chunk in chunks["string"][0]:
+            if chunk is not None:
+                print(f"New chunk here: {chunk}")
+                print(chunk.payload["metadata"]["id"])
+    """
     retrieval_controller.update_chunk(
         collection_name= "Test_collection",
         chunk_id= "Test_id1",
@@ -223,4 +235,4 @@ if __name__ == "__main__":
     #print(chunks)
 
     #answer=retrieval_controller.get_chunk_by_chunk_id("Default_collection",chunk_id="Test_id2")
-    #print(answer.payload["page_content"], answer.payload["metadata"]["source_id"],answer.payload["metadata"]["role_access"])
+    #print(answer.payload["page_content"], answer.payload["metadata"]["source_id"],answer.payload["metadata"]["role_access"])"""
